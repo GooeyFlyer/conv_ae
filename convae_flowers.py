@@ -38,14 +38,46 @@ class Autoencoder(nn.Module):
         return x
 
 
+def split_data():
+    data = preprocess_data(pd.read_csv(file_path, sep=";"))
+
+    # missing values imputed with np.nan
+    imputer = SimpleImputer(missing_values=np.nan)
+    data = pd.DataFrame(imputer.fit_transform(data), columns=data.columns)
+    data = data.reset_index(drop=True)
+
+    # feature scaling - ensure they all fall within 0 to 1
+    scalar = MinMaxScaler(feature_range=(0, 1))
+    df_scaled = scalar.fit_transform(data.to_numpy())
+    df_scaled = pd.DataFrame(df_scaled, columns=list(data.columns))
+
+    # use for target scaling of specific columns
+    # target_scalar = MinMaxScaler(feature_range=(0, 1))
+
+    df_scaled = df_scaled.astype(float)
+
+    # apply singleStepSample with window size of 20
+    (xVal, yVal) = singleStepSampler(df_scaled, window=20)
+
+    # a constant split with a value of 0.85 is defined, specifying proportion of data to be used for training
+    # xVal and yVal are split into training and testing sets according to the split ratio.
+    # training set has 0.85% of data, testing has 0.15%
+    SPLIT = 0.85
+
+    x_train = xVal[:int(SPLIT * len(xVal))]
+    y_train = yVal[:int(SPLIT * len(yVal))]
+    x_test = xVal[int(SPLIT * len(xVal)):]
+    y_test = yVal[int(SPLIT * len(yVal)):]
+
 def convae():
 
-    # images are resized and converted to tensors
+    # create transformation matrix
     transform = transforms.Compose([
         transforms.Resize((64, 64)),
         transforms.ToTensor(),
     ])
 
+    # load data
     train_dataset = datasets.Flowers102(
         root='flowers', split='train', transform=transform, download=True)
     test_dataset = datasets.Flowers102(
@@ -91,6 +123,7 @@ def convae():
     # save the model
     torch.save(model.state_dict(), 'conv_autoencoder.pth')
 
+    # evaluate model
     model.eval()
     with torch.no_grad():
         for data, _ in test_loader:
