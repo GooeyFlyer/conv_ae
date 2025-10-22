@@ -1,6 +1,4 @@
-import random
 import pandas as pd
-import os
 import numpy as np
 
 from sklearn.model_selection import train_test_split
@@ -11,8 +9,11 @@ import tensorflow as tf
 
 
 def process_data_tensor_flow(file_path: str):
+    """splits data, normalises data
+    issue as it does not normalise each column separately
+    assumes all columns are related"""
+
     data = preprocess_data(pd.read_csv(file_path, sep=";"))
-    data = data.iloc[:, :-1]
     raw_data = data.values  # numpy array
 
     # split data
@@ -31,31 +32,9 @@ def process_data_tensor_flow(file_path: str):
     return train_data, test_data
 
 
-def singleStepSampler(df: pd.DataFrame, window: int) -> (np.ndarray, np.ndarray):
-    """Prepares the data for single-step time-series forecasting"""
-    xRes = []  # store input features
-    yRes = []  # store target values
-
-    # create sequences of input features and corresponding target values based on window size
-    # input features constructed as a sequence of windowed data points,
-    # where each data point is a list containing values from each column of the dataframe
-    for i in range(0, len(df) - window):
-        res = []
-        for j in range(0, window):
-            r = []
-            for col in df.columns:
-                r.append(df[col][i + j])
-            res.append(r)
-        xRes.append(res)
-        # filter output columns here if needed
-        yRes.append(df.iloc[i + window].values)  # filter columns here
-    return np.array(xRes), np.array(yRes)
-
-
 def process_data_scaling(file_path: str):
     """
-    TODO:
-        fix this
+    imputes missing values, scales columns independently, splits data
     """
     data = preprocess_data(pd.read_csv(file_path, sep=";"))
 
@@ -73,19 +52,12 @@ def process_data_scaling(file_path: str):
     # target_scalar = MinMaxScaler(feature_range=(0, 1))
 
     df_scaled = df_scaled.astype(float)
+    raw_scaled_data = df_scaled.values
 
-    # apply singleStepSample with window size of 20
-    (xVal, yVal) = singleStepSampler(df_scaled, window=20)
+    # split data
+    train_data, test_data = train_test_split(raw_scaled_data, test_size=0.2, random_state=21)
 
-    # a constant split with a value of 0.85 is defined, specifying proportion of data to be used for training
-    # xVal and yVal are split into training and testing sets according to the split ratio.
-    # training set has 0.85% of data, testing has 0.15%
-    SPLIT = 0.85
-
-    x_train = xVal[:int(SPLIT * len(xVal))]
-    y_train = yVal[:int(SPLIT * len(yVal))]
-    x_test = xVal[int(SPLIT * len(xVal)):]
-    y_test = yVal[int(SPLIT * len(yVal)):]
+    return train_data, test_data
 
 
 def preprocess_data(data: pd.DataFrame) -> pd.DataFrame:
