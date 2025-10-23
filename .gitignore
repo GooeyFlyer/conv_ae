@@ -4,4 +4,4 @@ conv_autoencoder.pth
 *.txt
 .idea
 desktop.ini
-images
+*.png

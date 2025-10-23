@@ -35,8 +35,19 @@ def process_data_tensor_flow(file_path: str):
 def process_data_scaling(file_path: str):
     """
     imputes missing values, scales columns independently, splits data
+
+    Returns:
+        numpy.ndarray: training data split
+        numpy.ndarray: testing data split
+        pandas.Series: Series of time stamps
+        clist: array of column names
     """
     data = preprocess_data(pd.read_csv(file_path, sep=";"))
+
+    date_time_series = data.pop("Date_Time")  # remove Date_Time column
+    date_time_series = date_time_series.apply(lambda x: x[:-13])
+    print(date_time_series.head())
+    column_names = data.columns.tolist()
 
     # missing values imputed with np.nan
     imputer = SimpleImputer(missing_values=np.nan)
@@ -57,16 +68,20 @@ def process_data_scaling(file_path: str):
     # split data
     train_data, test_data = train_test_split(raw_scaled_data, test_size=0.2, random_state=21)
 
-    return train_data, test_data
+    if len(test_data[0]) != len(column_names):
+        raise ValueError("len(test_data[0]) not equal to len(column_names)")
+
+    return train_data, test_data, date_time_series, column_names
 
 
 def preprocess_data(data: pd.DataFrame) -> pd.DataFrame:
-    """Drops Date_Time column and formats data
+    """skips Date_Time column and formats data
     Returns:
         data (pd.DataFrame)"""
-    data = data.drop(columns="Date_Time", axis=1)
 
-    for col in data.columns:
+    # data = data.drop(columns="Date_Time", axis=1)
+
+    for col in data.columns[1:]:
         m_neg = data[col].str.startswith("-")
         data[col] = data[col].str.strip("-")
         data[col] = pd.to_numeric(data[col].astype(str).str.replace(",", "."))
@@ -81,4 +96,4 @@ if __name__ == "__main__":
 
     # print(get_data(10, 3, 2))
 
-    print(preprocess_data(pd.read_csv("FeatureDataSel.csv")).head())
+    print(process_data_scaling("data/FeatureDataSel.csv"))
