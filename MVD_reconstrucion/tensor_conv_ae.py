@@ -8,7 +8,6 @@ from keras.models import Model
 
 from MVD_reconstrucion.get_data import *
 
-
 num_to_show = 50
 
 
@@ -54,13 +53,17 @@ def draw_loss_histogram(ax: plt.Axes, loss, threshold: np.ndarray, title: str, m
     ax.legend()
 
 
-def predict(model, data, threshold):
-    reconstructions = model(data)
-    loss = keras.losses.mean_absolute_error(y_true=data, y_pred=reconstructions)
+def predict(model, test_data, threshold):
+    """
+    Returns:
+        tensorflow array, of boolean if datapoint loss < threshold, for each datapoint (a.k.a timestamp) in test_data
+    """
+    reconstructions = model(test_data)  # test_data ran through trained model
+    loss = keras.losses.mean_absolute_error(y_true=reconstructions, y_pred=test_data)
     return tf.math.less(loss, threshold)
 
 
-def conv_ae(file_path: str):
+def conv_ae(file_path: str, draw_plots: bool):
     """
     split data, normalise data, build model, train model, reconstruct test_data, plot test_data against reconstruct
     """
@@ -85,76 +88,98 @@ def conv_ae(file_path: str):
     encoded_data = autoencoder.encoder(test_data).numpy()
     decoded_data = autoencoder.decoder(encoded_data).numpy()
 
-    # plot test data against reconstructed data
-    print("plotting test data against reconstructed data")
-    for x in range(0, len(test_data[0])):
+    if draw_plots:
+        # plot test data against reconstructed data
+        print("plotting test data against reconstructed data")
+        print(f"only first {num_to_show} datapoints")
+        for x in range(0, len(test_data[0])):
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.plot((test_data[:, x])[:num_to_show], label=f"test {column_names[x]}", color="b")
+            ax.plot((decoded_data[:, x])[:num_to_show], label=f"reconstructed {column_names[x]}", color="r")
+            ax.fill_between(np.arange(len((test_data[:, x])[:num_to_show])), (decoded_data[:, x])[:num_to_show],
+                            (test_data[:, x])[:num_to_show], label="error", color="lightcoral")
+
+            # ax.set_xticklabels(date_time_series)
+            ax.set_ylim(0, 1)
+            ax.set_title(f"Plots of {column_names[x]}")
+            ax.set_xlabel("Timestamps")
+            ax.set_ylabel("Normalised values")
+            ax.legend()
+            fig.savefig(f"images/plot_{column_names[x]}.png")
+            plt.close()
+
+        print("plots saved to images/")
+
+    print("calculating stats of all datapoints")
+
+    if draw_plots:
+        # plot loss and val_loss
+        print("plotting loss and val_loss")
         fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot((test_data[:, x])[:num_to_show], label=f"test {column_names[x]}", color="b")
-        ax.plot((decoded_data[:, x])[:num_to_show], label=f"reconstructed {column_names[x]}", color="r")
-        ax.fill_between(np.arange(len((test_data[:, x])[:num_to_show])), (decoded_data[:, x])[:num_to_show],
-                         (test_data[:, x])[:num_to_show], label="error", color="lightcoral")
-
-        # ax.set_xticklabels(date_time_series)
-        ax.set_ylim(0, 1)
-        ax.set_title(f"Plots of {column_names[x]}")
-        ax.set_xlabel("Timestamps")
-        ax.set_ylabel("Normalised values")
+        ax.plot(history.history["loss"], label="Training loss")
+        ax.plot(history.history["val_loss"], label="Validation Loss")
         ax.legend()
-        fig.savefig(f"images/plot_{column_names[x]}.png")
+        fig.savefig("images/stats/loss-val_loss.png")
         plt.close()
-
-    print("plots saved to images/")
-
-    # plot loss and val_loss
-    print("plotting loss and val_loss")
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(history.history["loss"], label="Training loss")
-    ax.plot(history.history["val_loss"], label="Validation Loss")
-    ax.legend()
-    fig.savefig("images/stats/loss-val_loss.png")
-    plt.close()
 
     # detect anomalies
     # reconstruction error for training data
     print("calculating test loss, threshold, & train loss")
-    reconstructions = autoencoder.predict(train_data)
-    train_loss = keras.losses.mean_absolute_error(y_pred=reconstructions, y_true=train_data)
+    reconstructions = autoencoder.predict(train_data)  # reconstructs training data (remember contains anomalies)
+    train_loss = keras.losses.mean_absolute_error(y_true=reconstructions, y_pred=train_data)
 
     # choose threshold that is one standard deviation above the mean
     threshold = np.mean(train_loss) + np.std(train_loss)
     print("calculated anomaly Threshold: ", threshold)
 
     # reconstruction error for test data
-    reconstructions = autoencoder.predict(test_data)
-    test_loss = keras.losses.mean_absolute_error(y_pred=reconstructions, y_true=test_data)
+    reconstructions = autoencoder.predict(test_data)  # reconstructs testing data (remember contains anomalies)
+    test_loss = keras.losses.mean_absolute_error(y_true=reconstructions, y_pred=test_data)
 
-    max_loss = round(np.max(tf.concat([train_loss, test_loss], axis=0)), 2) + 0.01
-    print(max_loss)
+    if draw_plots:
+        print("plotting loss histograms")
+        max_loss = round(np.max(tf.concat([train_loss, test_loss], axis=0)), 2) + 0.01
+        fig = plt.figure(figsize=(10, 6))
+        gs = gridspec.GridSpec(2, 1, figure=fig)
 
-    print("plotting loss histograms")
-    # draw_histogram(train_loss, threshold, "Train", max_loss)
-    # draw_histogram(test_loss, threshold, "Test", max_loss)
+        ax1 = fig.add_subplot(gs[0, 0])
+        ax1.set_title("loss frequency")
+        draw_loss_histogram(ax1, train_loss, threshold, "Train", max_loss)
 
-    fig = plt.figure(figsize=(10, 6))
-    gs = gridspec.GridSpec(2, 1, figure=fig)
+        ax2 = fig.add_subplot(gs[1, 0])
+        draw_loss_histogram(ax2, test_loss, threshold, "Test", max_loss)
 
-    ax1 = fig.add_subplot(gs[0, 0])
-    ax1.set_title("loss frequency")
-    draw_loss_histogram(ax1, train_loss, threshold, "Train", max_loss)
+        fig.savefig(f"images/stats/Test_Train_Loss.png")
+        plt.close()
 
-    ax2 = fig.add_subplot(gs[1, 0])
-    draw_loss_histogram(ax2, test_loss, threshold, "Test", max_loss)
+        print("stats plots saved to images/stats/")
 
-    fig.savefig(f"images/stats/Test_Train_Loss.png")
-    plt.close()
+    print("train_data info: ", tf.size(train_data))  # dataframe flattened to 1D
+    print("test_data info: ", tf.size(test_data))  # dataframe flattened to 1D
+    predictions = predict(autoencoder, test_data, threshold)  # 1 prediction per test_data datapoint (a.k.a. timestamp)
+    print("predictions info: ", tf.size(predictions))
 
-    print("stats plots saved to images/stats/")
+    test_date_time_series = (date_time_series[-len(predictions):]).reset_index()
+    anomalies = test_date_time_series[
+        test_date_time_series.index.isin([i for i in range(len(predictions)) if not predictions[i]])
+    ]
 
-    # print("\nstats:")
-    # preds = predict(autoencoder, test_data, threshold)
-    # print(preds)
+    output = f"""stats:
+no. of anomalies in test_data: {len(anomalies)}
+percentage of anomalies in test_data: {round(len(anomalies)/len(predictions)*100, 1)}%
+\nTimestamps in test data marked as anomalies:
+test_data index, df index, Date_Time
+{anomalies}
+"""
+    with open("stats.txt", "w") as file:
+        file.write(output)
+
+    print("\nstats saved to stats.txt")
 
 
 if __name__ == "__main__":
-    clear_images_folder()
-    conv_ae("data/FeatureDataSel.csv")
+    draw_plots = True
+
+    if draw_plots:
+        clear_images_folder()
+    conv_ae("data/FeatureDataSel.csv", draw_plots)

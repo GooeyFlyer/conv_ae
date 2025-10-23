@@ -13,7 +13,7 @@ def process_data_tensor_flow(file_path: str):
     issue as it does not normalise each column separately
     assumes all columns are related"""
 
-    data = preprocess_data(pd.read_csv(file_path, sep=";"))
+    data = format_data(pd.read_csv(file_path, sep=";"))
     raw_data = data.values  # numpy array
 
     # split data
@@ -42,11 +42,10 @@ def process_data_scaling(file_path: str):
         pandas.Series: Series of time stamps
         clist: array of column names
     """
-    data = preprocess_data(pd.read_csv(file_path, sep=";"))
+    data = format_data(pd.read_csv(file_path, sep=";"))
 
     date_time_series = data.pop("Date_Time")  # remove Date_Time column
     date_time_series = date_time_series.apply(lambda x: x[:-13])
-    print(date_time_series.head())
     column_names = data.columns.tolist()
 
     # missing values imputed with np.nan
@@ -74,7 +73,7 @@ def process_data_scaling(file_path: str):
     return train_data, test_data, date_time_series, column_names
 
 
-def preprocess_data(data: pd.DataFrame) -> pd.DataFrame:
+def format_data(data: pd.DataFrame) -> pd.DataFrame:
     """skips Date_Time column and formats data
     Returns:
         data (pd.DataFrame)"""
@@ -87,7 +86,7 @@ def preprocess_data(data: pd.DataFrame) -> pd.DataFrame:
         data[col] = pd.to_numeric(data[col].astype(str).str.replace(",", "."))
         data.loc[m_neg, col] += -1
 
-    print(data.shape)
+    print("dataframe shape: ", data.shape)
 
     return data
 
