@@ -27,18 +27,6 @@ class AnomalyDetector(Model):
         return decoded
 
 
-def clear_images_folder(folder: str):
-    """clear folder of .png files"""
-    import os
-    for file_name in os.listdir(folder):
-        file_path = os.path.join(folder, file_name)
-        try:
-            if (os.path.isfile(file_path) or os.path.islink(file_path)) and (".png" in file_name):
-                os.unlink(file_path)
-        except Exception as e:
-            print(f"Failed to delete {file_path}. Reason: {e}")
-
-
 def predict(model, test_data, threshold):
     """
     Returns:
@@ -54,7 +42,7 @@ def conv_ae(file_path: str, draw_plots: bool, num_to_show: int):
     split data, normalise data, build model, train model, reconstruct test_data, plot graphs, find anomalies
     """
 
-    plottingManager = PlottingManager(num_to_show=num_to_show)
+    plottingManager = PlottingManager(draw_plots=draw_plots, num_to_show=num_to_show)
 
     # split & normalise data
     train_data, test_data, date_time_series, column_names = process_data_scaling(file_path)
@@ -76,13 +64,11 @@ def conv_ae(file_path: str, draw_plots: bool, num_to_show: int):
     encoded_data = autoencoder.encoder(test_data).numpy()
     decoded_data = autoencoder.decoder(encoded_data).numpy()
 
-    if draw_plots:
-        plottingManager.plot_reconstructions(test_data, decoded_data, column_names)
+    plottingManager.plot_reconstructions(test_data, decoded_data, column_names)
 
     print("calculating stats of all datapoints")
 
-    if draw_plots:
-        plottingManager.plot_model_loss_val_loss(history)
+    plottingManager.plot_model_loss_val_loss(history)
 
     # anomaly detection
     # reconstruction error for training data
@@ -98,9 +84,8 @@ def conv_ae(file_path: str, draw_plots: bool, num_to_show: int):
     reconstructions = autoencoder.predict(test_data)  # reconstructs testing data (remember contains anomalies)
     test_loss = keras.losses.mean_absolute_error(y_true=reconstructions, y_pred=test_data)
 
-    if draw_plots:
-        plottingManager.plot_loss_histograms(train_loss, test_loss, threshold)
-        plottingManager.plot_loss_bar_chart(test_loss, threshold)
+    plottingManager.plot_loss_histograms(train_loss, test_loss, threshold)
+    plottingManager.plot_loss_bar_chart(test_loss, threshold)
 
     predictions = predict(autoencoder, test_data, threshold)  # 1 prediction per test_data datapoint (a.k.a. timestamp)
     print("predictions info: ", tf.size(predictions))
@@ -131,10 +116,4 @@ test_data index, df index, Date_Time
 
 
 if __name__ == "__main__":
-    draw_plots = True
-
-    if draw_plots:
-        clear_images_folder("images/plots")
-        clear_images_folder("images/stats")
-
-    conv_ae("data/FeatureDataSel.csv", draw_plots, num_to_show=50)
+    conv_ae("data/FeatureDataSel.csv", draw_plots=True, num_to_show=50)
