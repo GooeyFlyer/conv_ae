@@ -95,4 +95,6 @@ if __name__ == "__main__":
 
     # print(get_data(10, 3, 2))
 
-    print(process_data_scaling("data/FeatureDataSel.csv"))
+    a, b, c, d = process_data_scaling("data/FeatureDataSel.csv")
+    print(a.shape)
+    print(b.shape)
