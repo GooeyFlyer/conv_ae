@@ -1,29 +1,15 @@
 import keras
 import numpy as np
+import tensorflow as tf
+import pandas as pd
 
 from keras import layers
 from keras.models import Model
 
-from MVD_reconstrucion.get_data import *
+from MVD_reconstrucion.get_data import process_data_scaling
 from MVD_reconstrucion.PlottingManager import PlottingManager
 
 # TODO: Run trained model on combined train_data and test_data
-
-# TODO: make sure implemented architecture conforms to this
-# Autoencoder architecture: (class names from torch)
-# encoder:
-#     Conv2d(in=3, out=16, kernel=3),
-#     ReLU(),
-#     MaxPool2d(window_square_size = 2),
-#     Conv2d(16, 8, 3, stride=1, padding=1),
-#     ReLU(),
-#     MaxPool2d(2, stride=2)
-#
-# decoder:
-#     ConvTranspose2d(8, 16, 3),
-#     ReLU(),
-#     ConvTranspose2d(16, 3, 3),
-#     Sigmoid()  # ensures output values are between 0 and 1
 
 
 class AnomalyDetector(Model):
@@ -48,21 +34,21 @@ class AnomalyDetector(Model):
         # down-samples and learns spatial features
         elif architecture == "new":
             self.encoder = keras.Sequential([
-                layers.Conv1D(18, kernel_size=3, activation="relu", name="conv1d_1"),
+                layers.Conv1D(8, kernel_size=3, activation="relu", name="conv1d_1", padding="same"),
                 layers.ReLU(),
                 layers.MaxPool1D(pool_size=1),
-                layers.Conv1D(4, kernel_size=3, activation="relu", name="conv1d_2"),
+                layers.Conv1D(4, kernel_size=3, activation="relu", name="conv1d_2", padding="same"),
                 layers.ReLU(),
                 layers.MaxPool1D(pool_size=1)
             ])
 
             # down-samples and learns spatial features
             self.decoder = keras.Sequential([
-                layers.Conv1DTranspose(8, kernel_size=3, activation="relu", name="convt1d_1"),
+                layers.Conv1DTranspose(8, kernel_size=3, activation="relu", name="ctrans1d_1", padding="same"),
                 layers.ReLU(),
-                layers.Conv1DTranspose(16, kernel_size=3, activation="relu", name="convt1d_2"),
+                layers.Conv1DTranspose(16, kernel_size=3, activation="relu", name="ctrans1d_2", padding="same"),
                 layers.ReLU(),
-                layers.Dense(18, activation="sigmoid")
+                layers.Dense(num_columns, activation="sigmoid")
             ])
 
         else:
@@ -94,16 +80,14 @@ def conv_ae(file_path: str, draw_plots: bool, num_to_show: int):
     # split & normalise data
     original_train_data, original_test_data, date_time_series, column_names = process_data_scaling(file_path)
 
-    # data sizes
-    train_size = original_train_data.shape[0]
-    test_size = original_test_data.shape[0]
-    num_columns = original_train_data.shape[1]
+    num_columns = original_train_data.shape[1]  # number channels
 
-    # batch_shape, steps, channels
-    reshaped_train_data = original_train_data.reshape(4, -1, num_columns)
-    reshaped_test_data = original_test_data.reshape(4, -1, num_columns)
+    # batch size, num datapoints in batch, channels for datapoint
+    reshaped_train_data = original_train_data.reshape(-1, 1, 18)
+    reshaped_test_data = original_test_data.reshape(-1, 1, 18)
 
-    print(reshaped_train_data.shape)  # (1, 1228, 18)
+    print(reshaped_train_data.shape)
+    print(reshaped_test_data.shape)
 
     # build model
     print("building model")
@@ -113,14 +97,21 @@ def conv_ae(file_path: str, draw_plots: bool, num_to_show: int):
 
     # train model
     print("training model")
-    history = autoencoder.fit(reshaped_train_data, reshaped_train_data, epochs=20, validation_data=(reshaped_test_data, reshaped_test_data), shuffle=True)
+    history = autoencoder.fit(
+        reshaped_train_data, reshaped_train_data,
+        epochs=20,
+        validation_data=(reshaped_test_data, reshaped_test_data),
+        shuffle=True
+    )
 
     # reconstructing test_data
     print("reconstructing data")
     encoded_data = autoencoder.encoder(reshaped_test_data).numpy()
     decoded_data = autoencoder.decoder(encoded_data).numpy()
 
-    print(decoded_data.shape)
+    print("\ndecoded_data.shape: ", decoded_data.shape)
+    print("original_test_data.shape: ", original_test_data.shape)
+    print("new shape: ", decoded_data.reshape(1, -1, 18)[0].shape)
 
     plottingManager.plot_reconstructions(original_test_data, decoded_data.reshape(1, -1, 18)[0], column_names)
 
@@ -131,7 +122,7 @@ def conv_ae(file_path: str, draw_plots: bool, num_to_show: int):
     # anomaly detection
     # reconstruction error for training data
     print("calculating test loss, threshold, & train loss")
-    reconstructions = autoencoder.predict(reshaped_train_data)  # reconstructs training data (remember contains anomalies)
+    reconstructions = autoencoder.predict(reshaped_train_data)  # reconstructs training data (contains anomalies)
     train_loss = tf.reshape(keras.losses.mean_absolute_error(y_true=reconstructions, y_pred=reshaped_train_data), [-1])
 
     # choose threshold that is one standard deviation above the mean
@@ -139,14 +130,15 @@ def conv_ae(file_path: str, draw_plots: bool, num_to_show: int):
     print("calculated anomaly Threshold: ", threshold)
 
     # reconstruction error for test data
-    reconstructions = autoencoder.predict(reshaped_test_data)  # reconstructs testing data (remember contains anomalies)
+    reconstructions = autoencoder.predict(reshaped_test_data)  # reconstructs testing data (contains anomalies)
     test_loss = tf.reshape(keras.losses.mean_absolute_error(y_true=reconstructions, y_pred=reshaped_test_data), [-1])
 
     plottingManager.plot_loss_histograms(train_loss, test_loss, threshold)
     plottingManager.plot_loss_bar_chart(test_loss, threshold)
 
-    predictions = predict(autoencoder, reshaped_test_data, threshold)[0]  # 1 prediction per test_data datapoint (a.k.a. timestamp)
+    predictions = predict(autoencoder, reshaped_test_data, threshold)  # 1 prediction per test_data datapoint
     print("predictions info: ", tf.size(predictions))
+    print(predictions)
 
     # saves indices of anomalies (False values) in predictions
     anomaly_indices = [i for i in range(len(predictions)) if not predictions[i]]
@@ -174,4 +166,4 @@ test_data index, df index, Date_Time
 
 
 if __name__ == "__main__":
-    conv_ae("data/FeatureDataSel.csv", draw_plots=True, num_to_show=150)
+    conv_ae("data/FeatureDataSel.csv", draw_plots=True, num_to_show=50)

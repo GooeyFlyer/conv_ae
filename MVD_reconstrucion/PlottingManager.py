@@ -24,8 +24,8 @@ class PlottingManager:
             print(f"only first {self.num_to_show} datapoints")
             for x in range(0, len(test_data[0])):
                 fig, ax = plt.subplots(figsize=(10, 6))
-                ax.plot((test_data[:, x])[:self.num_to_show], label=f"test {column_names[x]}", color="b")
-                ax.plot((decoded_data[:, x])[:self.num_to_show], label=f"reconstructed {column_names[x]}", color="r")
+                ax.plot((test_data[:, x])[:self.num_to_show], label=f"test", color="b")
+                ax.plot((decoded_data[:, x])[:self.num_to_show], label=f"reconstructed", color="r")
                 ax.fill_between(
                     np.arange(len((test_data[:, x])[:self.num_to_show])),
                     (decoded_data[:, x])[:self.num_to_show],
