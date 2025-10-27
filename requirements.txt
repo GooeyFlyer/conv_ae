@@ -3,12 +3,5 @@ numpy
 scikit-learn
 keras
 matplotlib
-scipy
 tensorflow
-seaborn
-bnlearn
-statsmodels==0.14.5
-torch
-torchvision
-pyautoencoder
 pyyaml
