@@ -6,8 +6,8 @@ import pandas as pd
 from keras import layers
 from keras.models import Model
 
-from MVD_reconstrucion.get_data import process_data_scaling
-from MVD_reconstrucion.PlottingManager import PlottingManager
+from get_data import process_data_scaling
+from PlottingManager import PlottingManager
 
 # TODO: Run trained model on combined train_data and test_data
 

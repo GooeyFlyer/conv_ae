@@ -1,5 +1,3 @@
-flowers
-conv_autoencoder.pth
 *.csv
 *.txt
 .idea
