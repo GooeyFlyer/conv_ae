@@ -79,11 +79,15 @@ def format_data(data: pd.DataFrame) -> pd.DataFrame:
         data (pd.DataFrame)"""
 
     # data = data.drop(columns="Date_Time", axis=1)
+    if "FileId" in data.columns:
+        data = data.drop(columns="FileId", axis=1)
+
+    data = data.applymap(str)
 
     for col in data.columns[1:]:
         m_neg = data[col].str.startswith("-")
         data[col] = data[col].str.strip("-")
-        data[col] = pd.to_numeric(data[col].astype(str).str.replace(",", "."))
+        data[col] = pd.to_numeric(data[col].astype(str).str.replace(",", "."))  # replace , with . then convert to np
         data.loc[m_neg, col] += -1
 
     print("dataframe shape: ", data.shape)
@@ -95,6 +99,6 @@ if __name__ == "__main__":
 
     # print(get_data(10, 3, 2))
 
-    a, b, c, d = process_data_scaling("data/FeatureDataSel.csv")
+    a, b, c, d = process_data_scaling("data/FeatureTable_Red.csv")
     print(a.shape)
     print(b.shape)
