@@ -84,7 +84,8 @@ def set_draw_reconstructions(draw_reconstructions: str, num_columns: int) -> boo
     return False
 
 
-def predict_anomalies(autoencoder, reshaped_test_data, threshold, date_time_series: pd.Series, file_path: str = "anomaly_stats.txt"):
+def predict_anomalies(autoencoder: keras.Model, reshaped_test_data: np.ndarray, threshold: float,
+                      date_time_series: pd.Series, file_path: str = "anomaly_stats.txt"):
     """predicts anomalies and saves info to .txt file"""
 
     predictions = predict(autoencoder, reshaped_test_data, threshold)  # 1 prediction per test_data datapoint
@@ -115,7 +116,8 @@ test_data index, df index, Date_Time
     print("\nstats saved to anomaly_stats.txt")
 
 
-def calculate_loss_and_threshold(autoencoder, reshaped_train_data, reshaped_test_data):
+def calculate_loss_and_threshold(autoencoder: keras.Model,
+                                 reshaped_train_data: np.ndarray, reshaped_test_data: np.ndarray):
     # reconstruction error for training data
     print("calculating test loss, threshold, & train loss")
     reconstructions = autoencoder.predict(reshaped_train_data)  # reconstructs training data (contains anomalies)
@@ -186,12 +188,13 @@ def conv_ae(file_path: str, draw_plots: bool, draw_reconstructions: str, num_to_
 
     plottingManager.plot_model_loss_val_loss(history)
 
-    train_loss, test_loss, threshold = calculate_loss_and_threshold(autoencoder, reshaped_train_data, reshaped_test_data)
+    train_loss, test_loss, threshold = calculate_loss_and_threshold(autoencoder,
+                                                                    reshaped_train_data, reshaped_test_data)
 
     plottingManager.plot_loss_histograms(train_loss, test_loss, threshold)
     plottingManager.plot_loss_bar_chart(test_loss, threshold)
 
-    predict_anomalies(autoencoder, reshaped_test_data, threshold, date_time_series, file_path)
+    predict_anomalies(autoencoder, reshaped_test_data, threshold, date_time_series)
 
 
 if __name__ == "__main__":

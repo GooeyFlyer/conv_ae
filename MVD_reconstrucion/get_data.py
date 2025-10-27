@@ -45,7 +45,8 @@ def process_data_scaling(file_path: str):
     data = format_data(pd.read_csv(file_path, sep=";"))
 
     date_time_series = data.pop("Date_Time")  # remove Date_Time column
-    date_time_series = date_time_series.apply(lambda x: x[:-13])
+    date_time_series = date_time_series.apply(lambda x: x[:-13])  # remove last 13 characters (time info)
+
     column_names = data.columns.tolist()
 
     # missing values imputed with np.nan
