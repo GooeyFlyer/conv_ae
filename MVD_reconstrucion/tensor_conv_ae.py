@@ -13,46 +13,27 @@ from MVD_reconstrucion.PlottingManager import PlottingManager
 
 
 class AnomalyDetector(Model):
-    def __init__(self, num_columns: int, architecture: str = "new"):
+    def __init__(self, num_columns: int):
         super(AnomalyDetector, self).__init__()
 
-        if architecture == "old":
-            # down-samples and learns spatial features
-            self.encoder = keras.Sequential([
-                layers.Dense(num_columns, activation="relu"),
-                layers.Dense(8, activation="relu"),
-                layers.Dense(4, activation="relu"),
-            ])
-
-            # # down-samples and learns spatial features
-            self.decoder = keras.Sequential([
-                layers.Dense(8, activation="relu"),
-                layers.Dense(16, activation="relu"),
-                layers.Dense(num_columns, activation="sigmoid"),
-            ])
+        # down-samples and learns spatial features
+        self.encoder = keras.Sequential([
+            layers.Conv1D(8, kernel_size=3, activation="relu", name="conv1d_1", padding="same"),
+            layers.ReLU(),
+            layers.MaxPool1D(pool_size=1, padding="same"),
+            layers.Conv1D(4, kernel_size=3, activation="relu", name="conv1d_2", padding="same"),
+            layers.ReLU(),
+            layers.MaxPool1D(pool_size=1, padding="same")
+        ])
 
         # down-samples and learns spatial features
-        elif architecture == "new":
-            self.encoder = keras.Sequential([
-                layers.Conv1D(8, kernel_size=3, activation="relu", name="conv1d_1", padding="same"),
-                layers.ReLU(),
-                layers.MaxPool1D(pool_size=1, padding="same"),
-                layers.Conv1D(4, kernel_size=3, activation="relu", name="conv1d_2", padding="same"),
-                layers.ReLU(),
-                layers.MaxPool1D(pool_size=1, padding="same")
-            ])
-
-            # down-samples and learns spatial features
-            self.decoder = keras.Sequential([
-                layers.Conv1DTranspose(8, kernel_size=3, activation="relu", name="ctrans1d_1", padding="same"),
-                layers.ReLU(),
-                layers.Conv1DTranspose(16, kernel_size=3, activation="relu", name="ctrans1d_2", padding="same"),
-                layers.ReLU(),
-                layers.Dense(num_columns, activation="sigmoid")
-            ])
-
-        else:
-            print(f"""architecture parameter must be "new" or "old". Currently is {architecture}""")
+        self.decoder = keras.Sequential([
+            layers.Conv1DTranspose(8, kernel_size=3, activation="relu", name="ctrans1d_1", padding="same"),
+            layers.ReLU(),
+            layers.Conv1DTranspose(16, kernel_size=3, activation="relu", name="ctrans1d_2", padding="same"),
+            layers.ReLU(),
+            layers.Dense(num_columns, activation="sigmoid")
+        ])
 
     def call(self, x):
         encoded = self.encoder(x)
@@ -158,7 +139,7 @@ def conv_ae(file_path: str, draw_plots: bool, draw_reconstructions: str, num_to_
 
     # build model
     print("building model")
-    autoencoder = AnomalyDetector(num_columns, "new")
+    autoencoder = AnomalyDetector(num_columns)
     autoencoder.compile(optimizer="adam", loss="mae")
     autoencoder.summary()
 
