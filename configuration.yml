@@ -1,0 +1,4 @@
+file_path: data/FeatureDataSel.csv  # file_path of .csv file
+draw_plots: True  # decides if images are drawn
+draw_reconstructions: auto  # decides if reconstruction plots are drawn
+num_to_show: 50  # datapoints from index 0 (inclusive) that are plotted

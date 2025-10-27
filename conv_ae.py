@@ -6,8 +6,9 @@ import pandas as pd
 from keras import layers
 from keras.models import Model
 
-from get_data import process_data_scaling
-from PlottingManager import PlottingManager
+from src.get_data import process_data_scaling
+from src.PlottingManager import PlottingManager
+from src.load_options import load_yaml
 
 # TODO: Run trained model on combined train_data and test_data
 
@@ -115,15 +116,18 @@ def calculate_loss_and_threshold(autoencoder: keras.Model,
     return train_loss, test_loss, threshold
 
 
-def conv_ae(file_path: str, draw_plots: bool, draw_reconstructions: str, num_to_show: int):
+def conv_ae():
     """
     split data, normalise data, build model, train model, reconstruct test_data, plot graphs, find anomalies
-    Parameters:
-        file_path (str): file_path of .csv file
-        draw_plots (bool): decides if images are drawn
-        draw_reconstructions (str): decides if reconstruction plots are drawn
-        num_to_show (int): datapoints from index 0 (inclusive) that are plotted
     """
+
+    # ENV Variables
+    config_values = load_yaml("configuration.yml")
+
+    file_path = config_values["file_path"]  # file_path of .csv file
+    draw_plots = config_values["draw_plots"]  # decides if images are drawn
+    draw_reconstructions = config_values["draw_reconstructions"]  # decides if reconstruction plots are drawn
+    num_to_show = config_values["num_to_show"]  # datapoints from index 0 (inclusive) that are plotted
 
     # split & normalise data
     original_train_data, original_test_data, date_time_series, column_names = process_data_scaling(file_path)
@@ -179,4 +183,4 @@ def conv_ae(file_path: str, draw_plots: bool, draw_reconstructions: str, num_to_
 
 
 if __name__ == "__main__":
-    conv_ae("data/FeatureDataSel.csv", draw_plots=True, draw_reconstructions="auto", num_to_show=50)
+    conv_ae()
