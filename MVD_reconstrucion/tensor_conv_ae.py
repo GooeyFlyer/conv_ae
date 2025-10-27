@@ -36,10 +36,10 @@ class AnomalyDetector(Model):
             self.encoder = keras.Sequential([
                 layers.Conv1D(8, kernel_size=3, activation="relu", name="conv1d_1", padding="same"),
                 layers.ReLU(),
-                layers.MaxPool1D(pool_size=1),
+                layers.MaxPool1D(pool_size=1, padding="same"),
                 layers.Conv1D(4, kernel_size=3, activation="relu", name="conv1d_2", padding="same"),
                 layers.ReLU(),
-                layers.MaxPool1D(pool_size=1)
+                layers.MaxPool1D(pool_size=1, padding="same")
             ])
 
             # down-samples and learns spatial features
@@ -70,12 +70,29 @@ def predict(model, test_data, threshold):
     return tf.math.less(loss, threshold)
 
 
-def conv_ae(file_path: str, draw_plots: bool, num_to_show: int):
+def set_draw_reconstructions(draw_reconstructions: str, num_columns: int) -> bool:
+    if draw_reconstructions == "yes":
+        return True
+    elif draw_reconstructions == "no":
+        return False
+    elif draw_reconstructions == "auto":
+        if num_columns <= 20:
+            return True
+        return False
+
+    print(f"draw_reconstructions is invalid value {draw_reconstructions}.\nDefaulting to False")
+    return False
+
+
+def conv_ae(file_path: str, draw_plots: bool, draw_reconstructions: str, num_to_show: int):
     """
     split data, normalise data, build model, train model, reconstruct test_data, plot graphs, find anomalies
+    Parameters:
+        file_path (str): file_path of .csv file
+        draw_plots (bool): decides if images are drawn
+        draw_reconstructions (str): decides if reconstruction plots are drawn
+        num_to_show (int): datapoints from index 0 (inclusive) that are plotted
     """
-
-    plottingManager = PlottingManager(draw_plots=draw_plots, num_to_show=num_to_show)
 
     # split & normalise data
     original_train_data, original_test_data, date_time_series, column_names = process_data_scaling(file_path)
@@ -83,8 +100,8 @@ def conv_ae(file_path: str, draw_plots: bool, num_to_show: int):
     num_columns = original_train_data.shape[1]  # number channels
 
     # batch size, num datapoints in batch, channels for datapoint
-    reshaped_train_data = original_train_data.reshape(-1, 1, 18)
-    reshaped_test_data = original_test_data.reshape(-1, 1, 18)
+    reshaped_train_data = original_train_data.reshape(-1, 1, num_columns)
+    reshaped_test_data = original_test_data.reshape(-1, 1, num_columns)
 
     print(reshaped_train_data.shape)
     print(reshaped_test_data.shape)
@@ -109,11 +126,13 @@ def conv_ae(file_path: str, draw_plots: bool, num_to_show: int):
     encoded_data = autoencoder.encoder(reshaped_test_data).numpy()
     decoded_data = autoencoder.decoder(encoded_data).numpy()
 
-    print("\ndecoded_data.shape: ", decoded_data.shape)
-    print("original_test_data.shape: ", original_test_data.shape)
-    print("new shape: ", decoded_data.reshape(1, -1, 18)[0].shape)
+    plottingManager = PlottingManager(
+        draw_plots=draw_plots,
+        draw_reconstructions=set_draw_reconstructions(draw_reconstructions, num_columns),
+        num_to_show=num_to_show
+    )
 
-    plottingManager.plot_reconstructions(original_test_data, decoded_data.reshape(1, -1, 18)[0], column_names)
+    plottingManager.plot_reconstructions(original_test_data, decoded_data.reshape(1, -1, num_columns)[0], column_names)
 
     print("calculating stats of all datapoints")
 
@@ -138,7 +157,6 @@ def conv_ae(file_path: str, draw_plots: bool, num_to_show: int):
 
     predictions = predict(autoencoder, reshaped_test_data, threshold)  # 1 prediction per test_data datapoint
     print("predictions info: ", tf.size(predictions))
-    print(predictions)
 
     # saves indices of anomalies (False values) in predictions
     anomaly_indices = [i for i in range(len(predictions)) if not predictions[i]]
@@ -166,4 +184,4 @@ test_data index, df index, Date_Time
 
 
 if __name__ == "__main__":
-    conv_ae("data/FeatureDataSel.csv", draw_plots=True, num_to_show=50)
+    conv_ae("data/FeatureTable_Red.csv", draw_plots=True, draw_reconstructions="auto", num_to_show=50)

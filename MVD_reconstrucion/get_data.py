@@ -82,7 +82,7 @@ def format_data(data: pd.DataFrame) -> pd.DataFrame:
     if "FileId" in data.columns:
         data = data.drop(columns="FileId", axis=1)
 
-    data = data.applymap(str)
+    data = data.map(str)
 
     for col in data.columns[1:]:
         m_neg = data[col].str.startswith("-")

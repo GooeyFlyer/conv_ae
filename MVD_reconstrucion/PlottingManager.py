@@ -6,11 +6,19 @@ import os
 
 
 class PlottingManager:
-    def __init__(self, draw_plots: bool, num_to_show: int):
+    def __init__(self, draw_plots: bool, num_to_show: int, draw_reconstructions: bool):
+        """
+        Parameters:
+            draw_plots (bool): decides if images are drawn
+            draw_reconstructions (str): decides if reconstruction plots are drawn. yes, auto, no. default auto
+            num_to_show (int): datapoints from index 0 (inclusive) that are plotted
+        """
         self.num_to_show = num_to_show
         self.draw_plots = draw_plots
         self.plots_path = "images/plots"
         self.stats_path = "images/stats"
+
+        self.draw_reconstructions = draw_reconstructions
 
         if self.draw_plots:
             self.clear_images_folder(self.plots_path)
@@ -19,7 +27,7 @@ class PlottingManager:
     def plot_reconstructions(self, test_data, decoded_data, column_names):
         """plot test data against reconstructed test data"""
 
-        if self.draw_plots:
+        if self.draw_plots and self.draw_reconstructions:
             print("plotting test data against reconstructed data")
             print(f"only first {self.num_to_show} datapoints")
             for x in range(0, len(test_data[0])):
@@ -41,7 +49,7 @@ class PlottingManager:
                 ax.legend()
 
                 file_name = f"plot_{column_names[x]}.png"
-                self.save_fig(fig, os.path.join(self.plots_path, file_name))
+                self.save_fig(fig, os.path.join(self.plots_path, file_name), verbose=False)
 
             print("plots saved to images/plots/")
 
@@ -99,10 +107,15 @@ class PlottingManager:
 
             self.save_fig(fig, os.path.join(self.stats_path, "Test_Loss.png"))
 
-    def save_fig(self, fig: plt.Figure, file_path: str):
+    def save_fig(self, fig: plt.Figure, file_path: str, verbose: bool = True):
+        """Saves pyplot fig to file_path.
+        verbose decides if file saved message displayed, default = True"""
+
         fig.savefig(file_path)
         plt.close()
-        print("fig saved to ", file_path)
+
+        if verbose:
+            print("fig saved to ", file_path)
 
     def clear_images_folder(self, folder: str):
         """clear folder of .png files"""
