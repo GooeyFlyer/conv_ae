@@ -84,6 +84,54 @@ def set_draw_reconstructions(draw_reconstructions: str, num_columns: int) -> boo
     return False
 
 
+def predict_anomalies(autoencoder, reshaped_test_data, threshold, date_time_series: pd.Series, file_path: str = "anomaly_stats.txt"):
+    """predicts anomalies and saves info to .txt file"""
+
+    predictions = predict(autoencoder, reshaped_test_data, threshold)  # 1 prediction per test_data datapoint
+    print("predictions info: ", tf.size(predictions))
+
+    # saves indices of anomalies (False values) in predictions
+    anomaly_indices = [i for i in range(len(predictions)) if not predictions[i]]
+
+    # filters Date_Time Series to just values in test_data
+    test_date_time_series = (date_time_series[-len(predictions):]).reset_index()
+
+    # filters test_date_time_series by indices saved in anomalies
+    anomalies = test_date_time_series[
+        test_date_time_series.index.isin(anomaly_indices)
+    ]
+
+    pd.set_option("display.max_rows", None)
+    output = f"""stats:
+no. of anomalies in test_data: {len(anomaly_indices)}
+percentage of anomalies in test_data: {round(len(anomaly_indices)/len(predictions)*100, 1)}%
+\nTimestamps in test data marked as anomalies:
+test_data index, df index, Date_Time
+{anomalies}
+"""
+    with open(file_path, "w") as file:
+        file.write(output)
+
+    print("\nstats saved to anomaly_stats.txt")
+
+
+def calculate_loss_and_threshold(autoencoder, reshaped_train_data, reshaped_test_data):
+    # reconstruction error for training data
+    print("calculating test loss, threshold, & train loss")
+    reconstructions = autoencoder.predict(reshaped_train_data)  # reconstructs training data (contains anomalies)
+    train_loss = tf.reshape(keras.losses.mean_absolute_error(y_true=reconstructions, y_pred=reshaped_train_data), [-1])
+
+    # choose threshold that is one standard deviation above the mean
+    threshold = float(np.mean(train_loss) + np.std(train_loss))
+    print("calculated anomaly Threshold: ", threshold)
+
+    # reconstruction error for test data
+    reconstructions = autoencoder.predict(reshaped_test_data)  # reconstructs testing data (contains anomalies)
+    test_loss = tf.reshape(keras.losses.mean_absolute_error(y_true=reconstructions, y_pred=reshaped_test_data), [-1])
+
+    return train_loss, test_loss, threshold
+
+
 def conv_ae(file_path: str, draw_plots: bool, draw_reconstructions: str, num_to_show: int):
     """
     split data, normalise data, build model, train model, reconstruct test_data, plot graphs, find anomalies
@@ -138,50 +186,13 @@ def conv_ae(file_path: str, draw_plots: bool, draw_reconstructions: str, num_to_
 
     plottingManager.plot_model_loss_val_loss(history)
 
-    # anomaly detection
-    # reconstruction error for training data
-    print("calculating test loss, threshold, & train loss")
-    reconstructions = autoencoder.predict(reshaped_train_data)  # reconstructs training data (contains anomalies)
-    train_loss = tf.reshape(keras.losses.mean_absolute_error(y_true=reconstructions, y_pred=reshaped_train_data), [-1])
-
-    # choose threshold that is one standard deviation above the mean
-    threshold = float(np.mean(train_loss) + np.std(train_loss))
-    print("calculated anomaly Threshold: ", threshold)
-
-    # reconstruction error for test data
-    reconstructions = autoencoder.predict(reshaped_test_data)  # reconstructs testing data (contains anomalies)
-    test_loss = tf.reshape(keras.losses.mean_absolute_error(y_true=reconstructions, y_pred=reshaped_test_data), [-1])
+    train_loss, test_loss, threshold = calculate_loss_and_threshold(autoencoder, reshaped_train_data, reshaped_test_data)
 
     plottingManager.plot_loss_histograms(train_loss, test_loss, threshold)
     plottingManager.plot_loss_bar_chart(test_loss, threshold)
 
-    predictions = predict(autoencoder, reshaped_test_data, threshold)  # 1 prediction per test_data datapoint
-    print("predictions info: ", tf.size(predictions))
-
-    # saves indices of anomalies (False values) in predictions
-    anomaly_indices = [i for i in range(len(predictions)) if not predictions[i]]
-
-    # filters Date_Time Series to just values in test_data
-    test_date_time_series = (date_time_series[-len(predictions):]).reset_index()
-
-    # filters test_date_time_series by indices saved in anomalies
-    anomalies = test_date_time_series[
-        test_date_time_series.index.isin(anomaly_indices)
-    ]
-
-    pd.set_option("display.max_rows", None)
-    output = f"""stats:
-no. of anomalies in test_data: {len(anomaly_indices)}
-percentage of anomalies in test_data: {round(len(anomaly_indices)/len(predictions)*100, 1)}%
-\nTimestamps in test data marked as anomalies:
-test_data index, df index, Date_Time
-{anomalies}
-"""
-    with open("anomaly_stats.txt", "w") as file:
-        file.write(output)
-
-    print("\nstats saved to anomaly_stats.txt")
+    predict_anomalies(autoencoder, reshaped_test_data, threshold, date_time_series, file_path)
 
 
 if __name__ == "__main__":
-    conv_ae("data/FeatureTable_Red.csv", draw_plots=True, draw_reconstructions="auto", num_to_show=50)
+    conv_ae("data/FeatureDataSel.csv", draw_plots=True, draw_reconstructions="auto", num_to_show=50)
