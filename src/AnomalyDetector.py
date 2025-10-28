@@ -1,13 +1,11 @@
-import keras
-from keras import layers
-from keras.models import Model
-from keras.utils import plot_model
 import tensorflow as tf
+from keras import Sequential, layers
+from keras.models import Model
 import numpy as np
 
 
 class AnomalyDetector(Model):
-    def __init__(self, num_in_batch: int, num_columns: int):
+    def __init__(self, steps_in_batch: int, num_columns: int):
         super(AnomalyDetector, self).__init__()
 
         strides = 1  # by how many datapoints the filter will move as it slides over input.
@@ -15,8 +13,8 @@ class AnomalyDetector(Model):
         activation = "leaky_relu"
 
         # down-samples and learns spatial features
-        self.encoder = keras.Sequential([
-            layers.Input((num_in_batch, num_columns)),
+        self.encoder = Sequential([
+            layers.Input((steps_in_batch, num_columns)),
 
             # convolve each window in input with each filter
             layers.Conv1D(filters=num_columns, kernel_size=3, strides=strides, activation=activation, padding="same"),
@@ -29,16 +27,16 @@ class AnomalyDetector(Model):
         ], name="encoder")
 
         # down-samples and learns spatial features
-        self.decoder = keras.Sequential([
-            layers.Input((num_in_batch//4 + num_in_batch % 4, num_columns*2)),
+        self.decoder = Sequential([
+            layers.Input((steps_in_batch//4 + steps_in_batch % 4, num_columns*2)),
 
             # expands dimensionality of input by factor pool_size
-            # TODO: unused while num_in_batch = 1 -> layers.UpSampling1D(size=pool_size),
+            layers.UpSampling1D(size=pool_size),
 
             # reverse of convolution layer
             layers.Conv1DTranspose(filters=num_columns*2, kernel_size=3, strides=strides, activation=activation, padding="same"),
 
-            # TODO: unused while num_in_batch = 1 -> layers.UpSampling1D(size=pool_size),
+            layers.UpSampling1D(size=pool_size),
             layers.Conv1DTranspose(filters=num_columns, kernel_size=3, strides=strides, activation=activation, padding="same"),
 
             # squeezes values between 0 and 1
@@ -55,7 +53,7 @@ if __name__ == "__main__":
     # simple usage
 
     # batche size, datapoints in batch, features
-    data = np.random.rand(400, 1, 18)
+    data = np.random.rand(400, 4, 18)
 
     # build model
     print("only building model")

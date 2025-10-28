@@ -105,20 +105,21 @@ def conv_ae():
     # split & normalise data
     original_train_data, original_test_data, date_time_series, column_names = process_data_scaling(file_path)
 
-    num_in_batch = math.gcd(original_train_data.shape[0], original_test_data.shape[0])  # highest common factor
-    num_in_batch = 1  # TODO: find out why num_in_batch = 1 is better than = 4
+    steps_in_batch = math.gcd(original_train_data.shape[0], original_test_data.shape[0])  # highest common factor
+    steps_in_batch = 4  # no. of neurons
+
     num_columns = original_train_data.shape[1]  # number channels
 
-    # batch size, num datapoints in batch, channels for datapoint
-    reshaped_train_data = original_train_data.reshape(-1, num_in_batch, num_columns)
-    reshaped_test_data = original_test_data.reshape(-1, num_in_batch, num_columns)
+    # batch shape, steps_in_batch, channels for datapoint
+    reshaped_train_data = original_train_data.reshape(-1, steps_in_batch, num_columns)
+    reshaped_test_data = original_test_data.reshape(-1, steps_in_batch, num_columns)
 
     print(reshaped_train_data.shape)
     print(reshaped_test_data.shape)
 
     # build model
     print("building model")
-    autoencoder = AnomalyDetector(num_in_batch, num_columns)
+    autoencoder = AnomalyDetector(steps_in_batch, num_columns)
     autoencoder.compile(optimizer="adam", loss="mae")
     autoencoder.encoder.summary()
     autoencoder.decoder.summary()
