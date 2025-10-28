@@ -3,9 +3,6 @@ import numpy as np
 import tensorflow as tf
 import pandas as pd
 
-from keras import layers
-from keras.models import Model
-
 from src.get_data import process_data_scaling
 from src.PlottingManager import PlottingManager
 from src.load_options import load_yaml
@@ -14,13 +11,13 @@ from src.AnomalyDetector import AnomalyDetector
 # TODO: Run trained model on combined train_data and test_data
 
 
-def predict(model, test_data, threshold):
+def predict(model: keras.Model, test_data: np.ndarray, threshold: float) -> tf.Tensor:
     """
     Returns:
         tensorflow array, of boolean if datapoint loss < threshold, for each datapoint (a.k.a timestamp) in test_data
     """
-    reconstructions = model(test_data)  # test_data ran through trained model
-    loss = keras.losses.mean_absolute_error(y_true=reconstructions, y_pred=test_data)
+    reconstructions = model(test_data)  # test_data ran through trained model. returns tensor with same shape as input
+    loss = keras.losses.mean_absolute_error(y_pred=reconstructions, y_true=test_data)
     return tf.math.less(loss, threshold)
 
 
@@ -39,11 +36,13 @@ def set_draw_reconstructions(draw_reconstructions: str, num_columns: int) -> boo
 
 
 def predict_anomalies(autoencoder: keras.Model, reshaped_test_data: np.ndarray, threshold: float,
-                      date_time_series: pd.Series, file_path: str = "anomaly_stats.txt"):
+                      date_time_series: pd.Series, file_path: str = "anomaly_stats.txt") -> None:
     """predicts anomalies and saves info to .txt file"""
 
     predictions = predict(autoencoder, reshaped_test_data, threshold)  # 1 prediction per test_data datapoint
+    predictions = tf.reshape(predictions, [-1])  # flatten tensor
     print("predictions info: ", tf.size(predictions))
+    print(predictions[0])
 
     # saves indices of anomalies (False values) in predictions
     anomaly_indices = [i for i in range(len(predictions)) if not predictions[i]]
@@ -75,7 +74,7 @@ def calculate_loss_and_threshold(autoencoder: keras.Model,
     # reconstruction error for training data
     print("calculating test loss, threshold, & train loss")
     reconstructions = autoencoder.predict(reshaped_train_data)  # reconstructs training data (contains anomalies)
-    train_loss = tf.reshape(keras.losses.mean_absolute_error(y_true=reconstructions, y_pred=reshaped_train_data), [-1])
+    train_loss = tf.reshape(keras.losses.mean_absolute_error(y_pred=reconstructions, y_true=reshaped_train_data), [-1])
 
     # choose threshold that is one standard deviation above the mean
     threshold = float(np.mean(train_loss) + np.std(train_loss))
@@ -83,7 +82,7 @@ def calculate_loss_and_threshold(autoencoder: keras.Model,
 
     # reconstruction error for test data
     reconstructions = autoencoder.predict(reshaped_test_data)  # reconstructs testing data (contains anomalies)
-    test_loss = tf.reshape(keras.losses.mean_absolute_error(y_true=reconstructions, y_pred=reshaped_test_data), [-1])
+    test_loss = tf.reshape(keras.losses.mean_absolute_error(y_pred=reconstructions, y_true=reshaped_test_data), [-1])
 
     return train_loss, test_loss, threshold
 
@@ -107,8 +106,8 @@ def conv_ae():
     num_columns = original_train_data.shape[1]  # number channels
 
     # batch size, num datapoints in batch, channels for datapoint
-    reshaped_train_data = original_train_data.reshape(-1, 1, num_columns)
-    reshaped_test_data = original_test_data.reshape(-1, 1, num_columns)
+    reshaped_train_data = original_train_data.reshape(-1, 4, num_columns)
+    reshaped_test_data = original_test_data.reshape(-1, 4, num_columns)
 
     print(reshaped_train_data.shape)
     print(reshaped_test_data.shape)
@@ -117,18 +116,19 @@ def conv_ae():
     print("building model")
     autoencoder = AnomalyDetector(num_columns)
     autoencoder.compile(optimizer="adam", loss="mae")
-    autoencoder.summary()
 
     # train model
     print("training model")
     history = autoencoder.fit(
         reshaped_train_data, reshaped_train_data,
         epochs=20,
+        batch_size=None,
         validation_data=(reshaped_test_data, reshaped_test_data),
         shuffle=True
     )
 
     # reconstructing test_data
+    # TODO: check if this is the same as AnomalyDetector.call(reshaped_test_data)
     print("reconstructing data")
     encoded_data = autoencoder.encoder(reshaped_test_data).numpy()
     decoded_data = autoencoder.decoder(encoded_data).numpy()
