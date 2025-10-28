@@ -106,15 +106,15 @@ def conv_ae():
     num_columns = original_train_data.shape[1]  # number channels
 
     # batch size, num datapoints in batch, channels for datapoint
-    reshaped_train_data = original_train_data.reshape(-1, 4, num_columns)
-    reshaped_test_data = original_test_data.reshape(-1, 4, num_columns)
+    reshaped_train_data = original_train_data.reshape(-1, 1, num_columns)
+    reshaped_test_data = original_test_data.reshape(-1, 1, num_columns)
 
     print(reshaped_train_data.shape)
     print(reshaped_test_data.shape)
 
     # build model
     print("building model")
-    autoencoder = AnomalyDetector(4, num_columns)
+    autoencoder = AnomalyDetector(1, num_columns)
     autoencoder.compile(optimizer="adam", loss="mae")
     autoencoder.encoder.summary()
     autoencoder.decoder.summary()
