@@ -66,7 +66,10 @@ def process_data_scaling(file_path: str):
     raw_scaled_data = df_scaled.values
 
     # split data
-    train_data, test_data = train_test_split(raw_scaled_data, test_size=0.2, random_state=21)
+    train_data, test_data = train_test_split(raw_scaled_data, test_size=0.2, shuffle=False)
+
+    print("train_data size: ", len(train_data))
+    print("test_data size: ", len(test_data))
 
     if len(test_data[0]) != len(column_names):
         raise ValueError("len(test_data[0]) not equal to len(column_names)")
@@ -100,6 +103,6 @@ if __name__ == "__main__":
 
     # print(get_data(10, 3, 2))
 
-    a, b, c, d = process_data_scaling("../data/FeatureTable_Red.csv")
+    a, b, c, d = process_data_scaling("../data/FeatureDataSel.csv")
     print(a.shape)
     print(b.shape)
