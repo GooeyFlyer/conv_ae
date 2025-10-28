@@ -9,37 +9,9 @@ from keras.models import Model
 from src.get_data import process_data_scaling
 from src.PlottingManager import PlottingManager
 from src.load_options import load_yaml
+from src.AnomalyDetector import AnomalyDetector
 
 # TODO: Run trained model on combined train_data and test_data
-
-
-class AnomalyDetector(Model):
-    def __init__(self, num_columns: int):
-        super(AnomalyDetector, self).__init__()
-
-        # down-samples and learns spatial features
-        self.encoder = keras.Sequential([
-            layers.Conv1D(8, kernel_size=3, activation="relu", name="conv1d_1", padding="same"),
-            layers.ReLU(),
-            layers.MaxPool1D(pool_size=1, padding="same"),
-            layers.Conv1D(4, kernel_size=3, activation="relu", name="conv1d_2", padding="same"),
-            layers.ReLU(),
-            layers.MaxPool1D(pool_size=1, padding="same")
-        ])
-
-        # down-samples and learns spatial features
-        self.decoder = keras.Sequential([
-            layers.Conv1DTranspose(8, kernel_size=3, activation="relu", name="ctrans1d_1", padding="same"),
-            layers.ReLU(),
-            layers.Conv1DTranspose(16, kernel_size=3, activation="relu", name="ctrans1d_2", padding="same"),
-            layers.ReLU(),
-            layers.Dense(num_columns, activation="sigmoid")
-        ])
-
-    def call(self, x):
-        encoded = self.encoder(x)
-        decoded = self.decoder(encoded)
-        return decoded
 
 
 def predict(model, test_data, threshold):
