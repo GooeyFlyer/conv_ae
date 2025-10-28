@@ -2,6 +2,7 @@ import keras
 import numpy as np
 import tensorflow as tf
 import pandas as pd
+import math
 
 from src.get_data import process_data_scaling
 from src.PlottingManager import PlottingManager
@@ -71,6 +72,7 @@ test_data index, df index, Date_Time
 
 def calculate_loss_and_threshold(autoencoder: keras.Model,
                                  reshaped_train_data: np.ndarray, reshaped_test_data: np.ndarray):
+    """threshold is calculated from reshaped_test_data"""
     # reconstruction error for training data
     print("calculating test loss, threshold, & train loss")
     reconstructions = autoencoder.predict(reshaped_train_data)  # reconstructs training data (contains anomalies)
@@ -103,18 +105,20 @@ def conv_ae():
     # split & normalise data
     original_train_data, original_test_data, date_time_series, column_names = process_data_scaling(file_path)
 
+    num_in_batch = math.gcd(original_train_data.shape[0], original_test_data.shape[0])  # highest common factor
+    num_in_batch = 1  # TODO: find out why num_in_batch = 1 is better than = 4
     num_columns = original_train_data.shape[1]  # number channels
 
     # batch size, num datapoints in batch, channels for datapoint
-    reshaped_train_data = original_train_data.reshape(-1, 1, num_columns)
-    reshaped_test_data = original_test_data.reshape(-1, 1, num_columns)
+    reshaped_train_data = original_train_data.reshape(-1, num_in_batch, num_columns)
+    reshaped_test_data = original_test_data.reshape(-1, num_in_batch, num_columns)
 
     print(reshaped_train_data.shape)
     print(reshaped_test_data.shape)
 
     # build model
     print("building model")
-    autoencoder = AnomalyDetector(1, num_columns)
+    autoencoder = AnomalyDetector(num_in_batch, num_columns)
     autoencoder.compile(optimizer="adam", loss="mae")
     autoencoder.encoder.summary()
     autoencoder.decoder.summary()
@@ -124,7 +128,6 @@ def conv_ae():
     history = autoencoder.fit(
         reshaped_train_data, reshaped_train_data,
         epochs=20,
-        batch_size=None,
         validation_data=(reshaped_test_data, reshaped_test_data),
         shuffle=True
     )
