@@ -73,5 +73,3 @@ if __name__ == "__main__":
 
     encoded_data = autoencoder.encoder(data).numpy()
     decoded_data = autoencoder.decoder(encoded_data).numpy()
-
-    # TODO: install pydot -> plot_model(autoencoder, to_file="autoencoder.png", show_layer_names=True)
