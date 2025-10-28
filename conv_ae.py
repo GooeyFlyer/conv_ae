@@ -114,8 +114,10 @@ def conv_ae():
 
     # build model
     print("building model")
-    autoencoder = AnomalyDetector(num_columns)
+    autoencoder = AnomalyDetector(4, num_columns)
     autoencoder.compile(optimizer="adam", loss="mae")
+    autoencoder.encoder.summary()
+    autoencoder.decoder.summary()
 
     # train model
     print("training model")
