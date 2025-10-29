@@ -61,6 +61,8 @@ class PlottingManager:
             fig, ax = plt.subplots(figsize=(10, 6))
             ax.plot(history.history["loss"], label="Training loss")
             ax.plot(history.history["val_loss"], label="Validation Loss")
+            ax.set_xlabel("epoch")
+            ax.set_ylabel("loss")
             ax.legend()
 
             self.save_fig(fig, os.path.join(self.stats_path, "loss-val_loss.png"))
@@ -94,11 +96,11 @@ class PlottingManager:
         ax.legend()
 
     def plot_loss_bar_chart(self, test_loss: tf.Tensor, threshold: float):
-        """bar chart of loss value for each test_data, with bar for anomaly threshold"""
+        """plot of loss value for each test_data, with line for anomaly threshold"""
 
         if self.draw_plots:
             fig, ax = plt.subplots(figsize=(10, 6))
-            ax.bar(range(len(test_loss[:self.num_to_show])), test_loss[:self.num_to_show], label=f"test loss")
+            ax.plot(range(len(test_loss[:self.num_to_show])), test_loss[:self.num_to_show], label=f"test loss")
             ax.axhline(y=threshold, color="r", label="anomaly threshold")
             ax.set_title(f"reconstruction loss in first {self.num_to_show} timestamps in test_data")
             ax.set_xlabel("Timestamp")
