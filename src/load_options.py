@@ -35,6 +35,7 @@ def verify_yaml_values(data: dict) -> dict:
         "draw_plots": [bool],
         "draw_reconstructions": [str],
         "num_to_show": [int],
+        "verbose_model": [bool],
     }
 
     for key, value in data.items():

@@ -41,8 +41,7 @@ def predict_anomalies(autoencoder: keras.Model, reshaped_test_data: np.ndarray, 
 
     predictions = predict(autoencoder, reshaped_test_data, threshold)  # 1 prediction per test_data datapoint
     predictions = tf.reshape(predictions, [-1])  # flatten tensor
-    print("predictions info: ", tf.size(predictions))
-    print(predictions[0])
+    print("\npredictions info: ", tf.size(predictions))
 
     # saves indices of anomalies (False values) in predictions
     anomaly_indices = [i for i in range(len(predictions)) if not predictions[i]]
@@ -70,11 +69,14 @@ test_data index, df index, Date_Time
 
 
 def calculate_loss_and_threshold(autoencoder: keras.Model,
-                                 reshaped_train_data: np.ndarray, reshaped_test_data: np.ndarray):
+                                 reshaped_train_data: np.ndarray, reshaped_test_data: np.ndarray, verbose_model):
     """threshold is calculated from reshaped_test_data"""
+
+    print("\ncalculating test loss, threshold, & train loss")
+
     # reconstruction error for training data
-    print("calculating test loss, threshold, & train loss")
-    reconstructions = autoencoder.predict(reshaped_train_data)  # reconstructs training data (contains anomalies)
+    # reconstructs training data (contains anomalies)
+    reconstructions = autoencoder.predict(reshaped_train_data, verbose=verbose_model)
     train_loss = tf.reshape(keras.losses.mean_absolute_error(y_pred=reconstructions, y_true=reshaped_train_data), [-1])
 
     # choose threshold that is one standard deviation above the mean
@@ -82,7 +84,8 @@ def calculate_loss_and_threshold(autoencoder: keras.Model,
     print("calculated anomaly Threshold: ", threshold)
 
     # reconstruction error for test data
-    reconstructions = autoencoder.predict(reshaped_test_data)  # reconstructs testing data (contains anomalies)
+    # reconstructs testing data (contains anomalies)
+    reconstructions = autoencoder.predict(reshaped_test_data, verbose=verbose_model)
     test_loss = tf.reshape(keras.losses.mean_absolute_error(y_pred=reconstructions, y_true=reshaped_test_data), [-1])
 
     return train_loss, test_loss, threshold
@@ -101,6 +104,7 @@ def conv_ae():
     draw_plots = config_values["draw_plots"]  # decides if images are drawn
     draw_reconstructions = config_values["draw_reconstructions"]  # decides if reconstruction plots are drawn
     num_to_show = config_values["num_to_show"]  # datapoints from index 0 (inclusive) that are plotted
+    verbose_model = config_values["verbose_model"]
 
     # normalise data
     raw_scaled_data, date_time_series, column_names = process_data_scaling(train_file_path)
@@ -124,21 +128,24 @@ def conv_ae():
     print("building model")
     autoencoder = AnomalyDetector(steps_in_batch, num_columns)
     autoencoder.compile(optimizer="adam", loss="mae")
-    autoencoder.encoder.summary()
-    autoencoder.decoder.summary()
+
+    if verbose_model:
+        autoencoder.encoder.summary()
+        autoencoder.decoder.summary()
 
     # train model
     print("training model")
     history = autoencoder.fit(
         reshaped_train_data, reshaped_train_data,
-        epochs=50,
+        epochs=40,
         validation_data=(reshaped_test_data, reshaped_test_data),
-        shuffle=True
+        shuffle=True,
+        verbose={True: "auto", False: 0}[verbose_model],
     )
 
     # reconstructing test_data
     # TODO: check if this is the same as AnomalyDetector.call(reshaped_test_data)
-    print("reconstructing data")
+    print("\nreconstructing data")
     encoded_data = autoencoder.encoder(reshaped_test_data).numpy()
     decoded_data = autoencoder.decoder(encoded_data).numpy()
 
@@ -151,12 +158,15 @@ def conv_ae():
 
     plottingManager.plot_reconstructions(original_test_data, decoded_data.reshape(1, -1, num_columns)[0], column_names)
 
-    print("calculating stats of all datapoints")
+    print("\ncalculating stats of all datapoints")
 
     plottingManager.plot_model_loss_val_loss(history)
 
-    train_loss, test_loss, threshold = calculate_loss_and_threshold(autoencoder,
-                                                                    reshaped_train_data, reshaped_test_data)
+    train_loss, test_loss, threshold = calculate_loss_and_threshold(
+        autoencoder,
+        reshaped_train_data, reshaped_test_data,
+        verbose_model={True: "auto", False: 0}[verbose_model]
+    )
 
     plottingManager.plot_loss_histograms(train_loss, test_loss, threshold)
     plottingManager.plot_loss_bar_chart(test_loss, threshold)

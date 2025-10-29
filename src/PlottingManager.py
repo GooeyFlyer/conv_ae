@@ -28,7 +28,7 @@ class PlottingManager:
         """plot test data against reconstructed test data"""
 
         if self.draw_plots and self.draw_reconstructions:
-            print("plotting test data against reconstructed data")
+            print("\nplotting test data against reconstructed data")
             print(f"only first {self.num_to_show} datapoints")
             for x in range(0, len(test_data[0])):
                 fig, ax = plt.subplots(figsize=(10, 6))
@@ -57,7 +57,7 @@ class PlottingManager:
         """plot model loss and val_loss"""
 
         if self.draw_plots:
-            print("plotting loss and val_loss")
+            print("\nplotting loss and val_loss")
             fig, ax = plt.subplots(figsize=(10, 6))
             ax.plot(history.history["loss"], label="Training loss")
             ax.plot(history.history["val_loss"], label="Validation Loss")
@@ -71,7 +71,7 @@ class PlottingManager:
         """histogram of loss values, with threshold"""
 
         if self.draw_plots:
-            print("plotting loss histograms")
+            print("\nplotting loss histograms")
             max_loss = round(np.max(tf.concat([train_loss, test_loss], axis=0)), 2) + 0.01
             fig = plt.figure(figsize=(10, 6))
             gs = gridspec.GridSpec(2, 1, figure=fig)
