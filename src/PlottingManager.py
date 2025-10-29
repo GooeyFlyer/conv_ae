@@ -10,8 +10,8 @@ class PlottingManager:
         """
         Parameters:
             draw_plots (bool): decides if images are drawn
-            draw_reconstructions (str): decides if reconstruction plots are drawn. yes, auto, no. default auto
             num_to_show (int): datapoints from index 0 (inclusive) that are plotted
+            draw_reconstructions (bool): decides if reconstruction plots are drawn
         """
         self.num_to_show = num_to_show
         self.draw_plots = draw_plots
