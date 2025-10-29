@@ -10,19 +10,20 @@ class AnomalyDetector(Model):
 
         strides = 1  # by how many datapoints the filter will move as it slides over input.
         pool_size = 2
-        activation = "leaky_relu"
+        kernel_size = 5
+        activation = "relu"
 
         # down-samples and learns spatial features
         self.encoder = Sequential([
             layers.Input((steps_in_batch, num_columns)),
 
             # convolve each window in input with each filter
-            layers.Conv1D(filters=num_columns, kernel_size=3, strides=strides, activation=activation, padding="same"),
+            layers.Conv1D(filters=num_columns, kernel_size=kernel_size, strides=strides, activation=activation, padding="same"),
 
             # reduces dimensionality of input by factor pool_size
             layers.MaxPool1D(pool_size=pool_size, padding="same"),
 
-            layers.Conv1D(filters=num_columns*2, kernel_size=3, strides=strides, activation=activation, padding="same"),
+            layers.Conv1D(filters=num_columns*2, kernel_size=kernel_size, strides=strides, activation=activation, padding="same"),
             layers.MaxPool1D(pool_size=pool_size, padding="same")
         ], name="encoder")
 
@@ -34,10 +35,10 @@ class AnomalyDetector(Model):
             layers.UpSampling1D(size=pool_size),
 
             # reverse of convolution layer
-            layers.Conv1DTranspose(filters=num_columns*2, kernel_size=3, strides=strides, activation=activation, padding="same"),
+            layers.Conv1DTranspose(filters=num_columns*2, kernel_size=kernel_size, strides=strides, activation=activation, padding="same"),
 
             layers.UpSampling1D(size=pool_size),
-            layers.Conv1DTranspose(filters=num_columns, kernel_size=3, strides=strides, activation=activation, padding="same"),
+            layers.Conv1DTranspose(filters=num_columns, kernel_size=kernel_size, strides=strides, activation=activation, padding="same"),
 
             # squeezes values between 0 and 1
             layers.Dense(units=num_columns, activation="sigmoid")
@@ -53,10 +54,9 @@ if __name__ == "__main__":
     # simple usage
 
     # batche size, datapoints in batch, features
-    data = np.random.rand(400, 4, 18)
+    data = np.random.rand(100, 12, 18)
 
     # build model
-    print("only building model")
     autoencoder = AnomalyDetector(data.shape[1], data.shape[2])
     autoencoder.compile(optimizer="adam", loss="mae")
     autoencoder.encoder.summary()
