@@ -2,9 +2,8 @@ import keras
 import numpy as np
 import tensorflow as tf
 import pandas as pd
-import math
 
-from src.get_data import process_data_scaling
+from src.get_data import process_data_scaling, parse_test_data_config
 from src.PlottingManager import PlottingManager
 from src.load_options import load_yaml
 from src.AnomalyDetector import AnomalyDetector
@@ -97,16 +96,21 @@ def conv_ae():
     # ENV Variables
     config_values = load_yaml("configuration.yml")
 
-    file_path = config_values["file_path"]  # file_path of .csv file
+    train_file_path = config_values["train_file_path"]  # file_path of .csv file
+    test_data_config = config_values["test_data_config"]  # file_path of .csv file
     draw_plots = config_values["draw_plots"]  # decides if images are drawn
     draw_reconstructions = config_values["draw_reconstructions"]  # decides if reconstruction plots are drawn
     num_to_show = config_values["num_to_show"]  # datapoints from index 0 (inclusive) that are plotted
 
-    # split & normalise data
-    original_train_data, original_test_data, date_time_series, column_names = process_data_scaling(file_path)
+    # normalise data
+    raw_scaled_data, date_time_series, column_names = process_data_scaling(train_file_path)
 
-    steps_in_batch = math.gcd(original_train_data.shape[0], original_test_data.shape[0])  # highest common factor
-    steps_in_batch = 4  # no. of neurons
+    steps_in_batch = 12  # no. of neurons
+
+    # splits raw_scaled_data depending on test_data_config
+    # test_data_config can be str, int, or None. See README.md for more details
+    original_train_data, original_test_data = parse_test_data_config(test_data_config, raw_scaled_data,
+                                                                     common_factor=steps_in_batch)
 
     num_columns = original_train_data.shape[1]  # number channels
 
@@ -114,8 +118,7 @@ def conv_ae():
     reshaped_train_data = original_train_data.reshape(-1, steps_in_batch, num_columns)
     reshaped_test_data = original_test_data.reshape(-1, steps_in_batch, num_columns)
 
-    print(reshaped_train_data.shape)
-    print(reshaped_test_data.shape)
+    print("\n")
 
     # build model
     print("building model")
@@ -128,7 +131,7 @@ def conv_ae():
     print("training model")
     history = autoencoder.fit(
         reshaped_train_data, reshaped_train_data,
-        epochs=20,
+        epochs=50,
         validation_data=(reshaped_test_data, reshaped_test_data),
         shuffle=True
     )
@@ -139,6 +142,7 @@ def conv_ae():
     encoded_data = autoencoder.encoder(reshaped_test_data).numpy()
     decoded_data = autoencoder.decoder(encoded_data).numpy()
 
+    # TODO: index error checking for num_to_show
     plottingManager = PlottingManager(
         draw_plots=draw_plots,
         draw_reconstructions=set_draw_reconstructions(draw_reconstructions, num_columns),

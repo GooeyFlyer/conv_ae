@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import math
 
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
@@ -34,11 +35,10 @@ def process_data_tensor_flow(file_path: str):
 
 def process_data_scaling(file_path: str):
     """
-    imputes missing values, scales columns independently, splits data
+    imputes missing values, scales columns independently
 
     Returns:
-        numpy.ndarray: training data split
-        numpy.ndarray: testing data split
+        numpy.ndarray: raw_scaled_data
         pandas.Series: Series of time stamps
         clist: array of column names
     """
@@ -65,16 +65,20 @@ def process_data_scaling(file_path: str):
     df_scaled = df_scaled.astype(float)
     raw_scaled_data = df_scaled.values
 
+    return raw_scaled_data, date_time_series, column_names
+
+
+def split_data(raw_scaled_data: np.ndarray, len_column_names):
     # split data
     train_data, test_data = train_test_split(raw_scaled_data, test_size=0.2, shuffle=False)
 
     print("train_data size: ", len(train_data))
     print("test_data size: ", len(test_data))
 
-    if len(test_data[0]) != len(column_names):
-        raise ValueError("len(test_data[0]) not equal to len(column_names)")
+    if len(test_data[0]) != len_column_names:
+        raise ValueError("len(test_data[0]) not equal to len_column_names")
 
-    return train_data, test_data, date_time_series, column_names
+    return train_data, test_data
 
 
 def format_data(data: pd.DataFrame) -> pd.DataFrame:
@@ -99,10 +103,80 @@ def format_data(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
+def split_at_index(target_index: int, raw_scaled_data: np.ndarray, common_factor: int) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Returns the index where the length of both the left and right split are divisible by common_factor.
+    Attempts index target_index first, then decreases index.
+    """
+
+    # tries all index values from target_index decreasing to 1
+    for train_length in range(target_index, 1, -1):
+        test_length = raw_scaled_data.shape[0] - train_length  # test split
+
+        # both are divisible by common_factor
+        if train_length % common_factor == 0 and test_length % common_factor == 0:
+
+            # split data
+            original_train_data = raw_scaled_data[:train_length]
+            original_test_data = raw_scaled_data[train_length:]
+
+            print(f"data split into train data & anomaly detection data, at index {train_length}")
+            return original_train_data, original_test_data
+
+    gcd = math.gcd(target_index, raw_scaled_data.shape[0] - target_index)
+
+    # error if split not found where both are divisible by common_factor
+    raise ValueError(f"""\n\n
+Split cannot be found:
+    split_index: {target_index}
+    raw_scaled_data.shape: {raw_scaled_data.shape}
+    common_factor: {common_factor}
+
+Greatest Common Denominator of {target_index} and {raw_scaled_data.shape[0] - target_index} = {gcd}
+""")
+
+
+def parse_test_data_config(test_data_config, raw_scaled_data, common_factor) -> tuple[np.ndarray, np.ndarray]:
+    """returns a split of raw_scaled_data, depending on test_data_config type"""
+
+    if isinstance(test_data_config, int):
+
+        original_train_data, original_test_data = split_at_index(
+            target_index=test_data_config,
+            raw_scaled_data=raw_scaled_data,
+            common_factor=common_factor,
+        )
+
+    elif isinstance(test_data_config, type(None)):
+
+        original_train_data = raw_scaled_data
+        original_test_data = original_train_data
+        print("anomaly detection on train_data")
+
+    elif isinstance(test_data_config, str):
+
+        test_file_path = test_data_config
+        original_train_data = raw_scaled_data
+        original_test_data, _, _ = process_data_scaling(test_file_path)
+        print(f"anomaly detection on data from {test_file_path}")
+
+    else:
+        raise ValueError("test_data_config not of type int, None, or str")
+
+    print("train_data.shape: ", original_train_data.shape)
+    print("test_data.shape: ", original_test_data.shape)
+
+    return original_train_data, original_test_data
+
+
 if __name__ == "__main__":
 
     # print(get_data(10, 3, 2))
 
-    a, b, c, d = process_data_scaling("../data/FeatureDataSel.csv")
-    print(a.shape)
-    print(b.shape)
+    a, _, _ = process_data_scaling("../data/FeatureDataSel.csv")
+    print("shape: ", a.shape)
+
+    a = a[50:]
+
+    # raises error
+    oa, ob = parse_test_data_config(test_data_config=1200, raw_scaled_data=a, common_factor=12)
