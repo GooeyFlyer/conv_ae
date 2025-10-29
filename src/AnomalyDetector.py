@@ -72,8 +72,8 @@ if __name__ == "__main__":
 
     history = autoencoder.fit(
         data, data,
-        epochs=10,
-        shuffle=True,
+        epochs=20,
+        shuffle=False,
         verbose=2
     )
 

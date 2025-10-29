@@ -135,9 +135,9 @@ def conv_ae():
     print("training model")
     history = autoencoder.fit(
         reshaped_train_data, reshaped_train_data,
-        epochs=40,
+        epochs=50,
         validation_data=(reshaped_test_data, reshaped_test_data),
-        shuffle=True,
+        shuffle=False,
         verbose={True: "auto", False: 0}[verbose_model],
     )
 
