@@ -3,7 +3,7 @@ import numpy as np
 import tensorflow as tf
 import pandas as pd
 
-from src.get_data import process_data_scaling, parse_test_data_config
+from src.get_data import process_data_scaling, parse_test_data_config, extend_data
 from src.PlottingManager import PlottingManager
 from src.load_options import load_yaml
 from src.AnomalyDetector import AnomalyDetector
@@ -97,26 +97,32 @@ def conv_ae():
     config_values = load_yaml("configuration.yml")  # ENV Variables
 
     # normalise data
-    raw_scaled_data, date_time_series, column_names = process_data_scaling(config_values["train_file_path"])
+    raw_scaled_data, date_time_series, channel_names = process_data_scaling(config_values["train_file_path"])
 
     steps_in_batch = 12  # no. of neurons
 
     # splits raw_scaled_data depending on test_data_config
     # test_data_config can be str, int, or None. See README.md for more details
-    original_train_data, original_test_data = parse_test_data_config(config_values["test_data_config"], raw_scaled_data,
-                                                                     common_factor=steps_in_batch)
+    original_train_data, original_test_data = parse_test_data_config(config_values["test_data_config"], raw_scaled_data)
 
-    num_columns = original_train_data.shape[1]  # number channels
+    num_channels = raw_scaled_data.shape[1]  # number channels
 
-    # batch shape, steps_in_batch, channels for datapoint
-    reshaped_train_data = original_train_data.reshape(-1, steps_in_batch, num_columns)
-    reshaped_test_data = original_test_data.reshape(-1, steps_in_batch, num_columns)
+    del raw_scaled_data
+
+    original_train_data = extend_data(original_train_data, steps_in_batch)
+    original_test_data = extend_data(original_test_data, steps_in_batch)
+
+    # batch shape, steps_in_batch, num features
+    reshaped_train_data = original_train_data.reshape(-1, steps_in_batch, num_channels)
+    reshaped_test_data = original_test_data.reshape(-1, steps_in_batch, num_channels)
+
+    del original_train_data
 
     print("\n")
 
     # build model
     print("building model")
-    autoencoder = AnomalyDetector(steps_in_batch, num_columns)
+    autoencoder = AnomalyDetector(steps_in_batch, num_channels)
     autoencoder.compile(optimizer="adam", loss="mae")
 
     if config_values["verbose_model"]:
@@ -141,12 +147,16 @@ def conv_ae():
 
     plottingManager = PlottingManager(
         draw_plots=config_values["draw_plots"],  # decides if images are drawn
-        draw_reconstructions=set_draw_reconstructions(config_values["draw_reconstructions"], num_columns),
+        draw_reconstructions=set_draw_reconstructions(config_values["draw_reconstructions"], num_channels),
         num_to_show=config_values["num_to_show"],
         anomaly_split_len=len(original_test_data),
     )
 
-    plottingManager.plot_reconstructions(original_test_data, decoded_data.reshape(1, -1, num_columns)[0], column_names)
+    plottingManager.plot_reconstructions(
+        original_test_data, decoded_data.reshape(1, -1, num_channels)[0], channel_names
+    )
+
+    del original_test_data
 
     print("\ncalculating stats of all datapoints")
 

@@ -136,22 +136,22 @@ Greatest Common Denominator of {target_index} and {raw_scaled_data.shape[0] - ta
 """)
 
 
-def parse_test_data_config(test_data_config, raw_scaled_data, common_factor) -> tuple[np.ndarray, np.ndarray]:
+def parse_test_data_config(test_data_config, raw_scaled_data) -> tuple[np.ndarray, np.ndarray]:
     """returns a split of raw_scaled_data, depending on test_data_config type"""
 
     if isinstance(test_data_config, int):
 
-        original_train_data, original_test_data = split_at_index(
-            target_index=test_data_config,
-            raw_scaled_data=raw_scaled_data,
-            common_factor=common_factor,
-        )
+        train_length = test_data_config
+        # split data
+        original_train_data = raw_scaled_data[:train_length]
+        original_test_data = raw_scaled_data[train_length:]
+        print(f"data split into train data & anomaly detection data, at index {train_length}")
 
     elif isinstance(test_data_config, type(None)):
 
         original_train_data = raw_scaled_data
         original_test_data = original_train_data
-        print("anomaly detection on train_data")
+        print("anomaly detection on training data")
 
     elif isinstance(test_data_config, str):
 
@@ -169,14 +169,33 @@ def parse_test_data_config(test_data_config, raw_scaled_data, common_factor) -> 
     return original_train_data, original_test_data
 
 
+def extend_data(data: np.ndarray, steps_in_batch: int) -> np.ndarray:
+    """
+    extends data with final index, until number datapoints is divisible by steps_in_batch
+    """
+
+    # check data can be reshaped by checking number datapoints is divisible by steps_in_batch
+    while data.shape[0] % steps_in_batch != 0:
+        data = np.vstack([data, data[-1]])
+
+    return data
+
+
 if __name__ == "__main__":
 
     # print(get_data(10, 3, 2))
 
     a, _, _ = process_data_scaling("../data/FeatureDataSel.csv")
-    print("shape: ", a.shape)
 
     a = a[50:]
+    print("test data shape: ", a.shape)
 
-    # raises error
-    oa, ob = parse_test_data_config(test_data_config=1200, raw_scaled_data=a, common_factor=12)
+    print("\nextending to be divisible by 12")
+    print("extend_data return shape: ", extend_data(a, 12).shape)
+    print("")
+
+    oa, ob = parse_test_data_config(test_data_config=1200, raw_scaled_data=a)
+
+    print("\nextended split shapes:")
+    print("oa.shape: ", extend_data(oa, 12).shape)
+    print("ob.shape: ", extend_data(ob, 12).shape)
