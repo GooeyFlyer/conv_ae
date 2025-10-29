@@ -6,19 +6,23 @@ import os
 
 
 class PlottingManager:
-    def __init__(self, draw_plots: bool, num_to_show: int, draw_reconstructions: bool):
+    def __init__(self, draw_plots: bool, num_to_show: int, draw_reconstructions: bool, anomaly_split_len: int):
         """
         Parameters:
             draw_plots (bool): decides if images are drawn
             num_to_show (int): datapoints from index 0 (inclusive) that are plotted
             draw_reconstructions (bool): decides if reconstruction plots are drawn
         """
-        self.num_to_show = num_to_show
         self.draw_plots = draw_plots
         self.plots_path = "images/plots"
         self.stats_path = "images/stats"
-
         self.draw_reconstructions = draw_reconstructions
+
+        self.num_to_show = num_to_show
+        if num_to_show > anomaly_split_len:
+            print(f"""num_to_show ({num_to_show}) larger than anomaly detection split ({anomaly_split_len}).
+Limiting to {anomaly_split_len}""")
+            self.num_to_show = anomaly_split_len
 
         if self.draw_plots:
             self.clear_images_folder(self.plots_path)

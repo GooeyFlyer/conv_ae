@@ -8,8 +8,6 @@ from src.PlottingManager import PlottingManager
 from src.load_options import load_yaml
 from src.AnomalyDetector import AnomalyDetector
 
-# TODO: Run trained model on combined train_data and test_data
-
 
 def predict(model: keras.Model, test_data: np.ndarray, threshold: float) -> tf.Tensor:
     """
@@ -149,11 +147,11 @@ def conv_ae():
     encoded_data = autoencoder.encoder(reshaped_test_data).numpy()
     decoded_data = autoencoder.decoder(encoded_data).numpy()
 
-    # TODO: index error checking for num_to_show
     plottingManager = PlottingManager(
         draw_plots=draw_plots,
         draw_reconstructions=set_draw_reconstructions(draw_reconstructions, num_columns),
-        num_to_show=num_to_show
+        num_to_show=num_to_show,
+        anomaly_split_len=len(original_test_data),
     )
 
     plottingManager.plot_reconstructions(original_test_data, decoded_data.reshape(1, -1, num_columns)[0], column_names)
