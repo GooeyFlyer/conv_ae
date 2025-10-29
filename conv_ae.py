@@ -91,27 +91,19 @@ def calculate_loss_and_threshold(autoencoder: keras.Model,
 
 def conv_ae():
     """
-    split data, normalise data, build model, train model, reconstruct test_data, plot graphs, find anomalies
+    normalise data, split data, build model, train model, reconstruct test_data, plot graphs, find anomalies
     """
 
-    # ENV Variables
-    config_values = load_yaml("configuration.yml")
-
-    train_file_path = config_values["train_file_path"]  # file_path of .csv file
-    test_data_config = config_values["test_data_config"]  # file_path of .csv file
-    draw_plots = config_values["draw_plots"]  # decides if images are drawn
-    draw_reconstructions = config_values["draw_reconstructions"]  # decides if reconstruction plots are drawn
-    num_to_show = config_values["num_to_show"]  # datapoints from index 0 (inclusive) that are plotted
-    verbose_model = config_values["verbose_model"]
+    config_values = load_yaml("configuration.yml")  # ENV Variables
 
     # normalise data
-    raw_scaled_data, date_time_series, column_names = process_data_scaling(train_file_path)
+    raw_scaled_data, date_time_series, column_names = process_data_scaling(config_values["train_file_path"])
 
     steps_in_batch = 12  # no. of neurons
 
     # splits raw_scaled_data depending on test_data_config
     # test_data_config can be str, int, or None. See README.md for more details
-    original_train_data, original_test_data = parse_test_data_config(test_data_config, raw_scaled_data,
+    original_train_data, original_test_data = parse_test_data_config(config_values["test_data_config"], raw_scaled_data,
                                                                      common_factor=steps_in_batch)
 
     num_columns = original_train_data.shape[1]  # number channels
@@ -127,7 +119,7 @@ def conv_ae():
     autoencoder = AnomalyDetector(steps_in_batch, num_columns)
     autoencoder.compile(optimizer="adam", loss="mae")
 
-    if verbose_model:
+    if config_values["verbose_model"]:
         autoencoder.encoder.summary()
         autoencoder.decoder.summary()
 
@@ -138,7 +130,7 @@ def conv_ae():
         epochs=50,
         validation_data=(reshaped_test_data, reshaped_test_data),
         shuffle=False,
-        verbose={True: "auto", False: 0}[verbose_model],
+        verbose={True: "auto", False: 0}[config_values["verbose_model"]],
     )
 
     # reconstructing test_data
@@ -148,9 +140,9 @@ def conv_ae():
     decoded_data = autoencoder.decoder(encoded_data).numpy()
 
     plottingManager = PlottingManager(
-        draw_plots=draw_plots,
-        draw_reconstructions=set_draw_reconstructions(draw_reconstructions, num_columns),
-        num_to_show=num_to_show,
+        draw_plots=config_values["draw_plots"],  # decides if images are drawn
+        draw_reconstructions=set_draw_reconstructions(config_values["draw_reconstructions"], num_columns),
+        num_to_show=config_values["num_to_show"],
         anomaly_split_len=len(original_test_data),
     )
 
@@ -163,7 +155,7 @@ def conv_ae():
     train_loss, test_loss, threshold = calculate_loss_and_threshold(
         autoencoder,
         reshaped_train_data, reshaped_test_data,
-        verbose_model={True: "auto", False: 0}[verbose_model]
+        verbose_model={True: "auto", False: 0}[config_values["verbose_model"]]
     )
 
     plottingManager.plot_loss_histograms(train_loss, test_loss, threshold)
