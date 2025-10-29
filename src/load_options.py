@@ -47,7 +47,9 @@ def verify_yaml_values(data: dict) -> dict:
                 valid = True
 
         if not valid:
-            raise ValueError(key + " in configuration.yml must be a " + expected_type_array_as_string(expected_type_array))
+            raise ValueError(
+                key + " in configuration.yml must be a " + expected_type_array_as_string(expected_type_array)
+            )
 
         # special cases handled below
 

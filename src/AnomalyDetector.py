@@ -18,12 +18,16 @@ class AnomalyDetector(Model):
             layers.Input((steps_in_batch, num_columns)),
 
             # convolve each window in input with each filter
-            layers.Conv1D(filters=num_columns, kernel_size=kernel_size, strides=strides, activation=activation, padding="same"),
+            layers.Conv1D(
+                filters=num_columns, kernel_size=kernel_size, strides=strides, activation=activation, padding="same"
+            ),
 
             # reduces dimensionality of input by factor pool_size
             layers.MaxPool1D(pool_size=pool_size, padding="same"),
 
-            layers.Conv1D(filters=num_columns*2, kernel_size=kernel_size, strides=strides, activation=activation, padding="same"),
+            layers.Conv1D(
+                filters=num_columns*2, kernel_size=kernel_size, strides=strides, activation=activation, padding="same"
+            ),
             layers.MaxPool1D(pool_size=pool_size, padding="same")
         ], name="encoder")
 
@@ -35,10 +39,14 @@ class AnomalyDetector(Model):
             layers.UpSampling1D(size=pool_size),
 
             # reverse of convolution layer
-            layers.Conv1DTranspose(filters=num_columns*2, kernel_size=kernel_size, strides=strides, activation=activation, padding="same"),
+            layers.Conv1DTranspose(
+                filters=num_columns*2, kernel_size=kernel_size, strides=strides, activation=activation, padding="same"
+            ),
 
             layers.UpSampling1D(size=pool_size),
-            layers.Conv1DTranspose(filters=num_columns, kernel_size=kernel_size, strides=strides, activation=activation, padding="same"),
+            layers.Conv1DTranspose(
+                filters=num_columns, kernel_size=kernel_size, strides=strides, activation=activation, padding="same"
+            ),
 
             # squeezes values between 0 and 1
             layers.Dense(units=num_columns, activation="sigmoid")
