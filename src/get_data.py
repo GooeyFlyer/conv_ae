@@ -163,9 +163,6 @@ def parse_test_data_config(test_data_config, raw_scaled_data) -> tuple[np.ndarra
     else:
         raise ValueError("test_data_config not of type int, None, or str")
 
-    print("train_data.shape: ", original_train_data.shape)
-    print("test_data.shape: ", original_test_data.shape)
-
     return original_train_data, original_test_data
 
 

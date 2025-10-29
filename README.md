@@ -20,9 +20,8 @@ A convolutional autoencoder designed for anomaly detection in multivariate time-
 - Change _test_data_config_ to an index value, where you want the model to train
 on data before the index, and detect anomalies on data after the index.
 
-**Note:** the index set may not be the index used to split. It will decrease the index
-(adding data to the anomaly detection split) until the length of both splits are divisible by 12.
-(the number of neurons in the input for the model).
+**Note:** if a split does not fit the input shape of the model, the final datapoint
+will be extended until it does.
 
 ### Run the program
 

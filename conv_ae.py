@@ -112,6 +112,9 @@ def conv_ae():
     original_train_data = extend_data(original_train_data, steps_in_batch)
     original_test_data = extend_data(original_test_data, steps_in_batch)
 
+    print("train_data.shape: ", original_train_data.shape)
+    print("test_data.shape: ", original_test_data.shape)
+
     # batch shape, steps_in_batch, num features
     reshaped_train_data = original_train_data.reshape(-1, steps_in_batch, num_channels)
     reshaped_test_data = original_test_data.reshape(-1, steps_in_batch, num_channels)
@@ -133,7 +136,7 @@ def conv_ae():
     print("training model")
     history = autoencoder.fit(
         reshaped_train_data, reshaped_train_data,
-        epochs=50,
+        epochs=100,
         validation_data=(reshaped_test_data, reshaped_test_data),
         shuffle=False,
         verbose={True: "auto", False: 0}[config_values["verbose_model"]],
