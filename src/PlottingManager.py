@@ -62,14 +62,24 @@ Limiting to {anomaly_split_len}""")
 
         if self.draw_plots:
             print("\nplotting loss and val_loss")
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.plot(history.history["loss"], label="Training loss")
-            ax.plot(history.history["val_loss"], label="Validation Loss")
-            ax.set_xlabel("epoch")
-            ax.set_ylabel("loss")
-            ax.legend()
+            fig = plt.figure(figsize=(10, 6))
+            gs = gridspec.GridSpec(2, 1, figure=fig)
 
-            self.save_fig(fig, os.path.join(self.stats_path, "loss-val_loss.png"))
+            ax1 = fig.add_subplot(gs[0, 0])
+            ax1.set_title("Model metrics")
+            ax1.plot(history.history["loss"], label="Training loss", color="blue")
+            ax1.plot(history.history["val_loss"], label="Validation Loss", color="orange")
+            ax1.set_ylabel("loss")
+
+            ax2 = fig.add_subplot(gs[1, 0])
+            ax2.plot(history.history["accuracy"], label="Training accuracy", color="purple")
+            ax2.plot(history.history["val_accuracy"], label="Validation accuracy", color="olive")
+            ax2.set_xlabel("epoch")
+            ax2.set_ylabel("accuracy")
+
+            fig.legend()
+
+            self.save_fig(fig, os.path.join(self.stats_path, "model_metrics.png"))
 
     def plot_loss_histograms(self, train_loss: tf.Tensor, test_loss: tf.Tensor, threshold: float):
         """histogram of loss values, with threshold"""

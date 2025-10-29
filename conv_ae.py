@@ -126,7 +126,7 @@ def conv_ae():
     # build model
     print("building model")
     autoencoder = AnomalyDetector(steps_in_batch, num_channels)
-    autoencoder.compile(optimizer="adam", loss="mae")
+    autoencoder.compile(optimizer="adam", loss="mae", metrics=["accuracy"])
 
     if config_values["verbose_model"]:
         autoencoder.encoder.summary()
