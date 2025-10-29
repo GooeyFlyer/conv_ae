@@ -12,6 +12,12 @@ def load_yaml(file_name: str) -> dict:
     return verify_yaml_values(data)
 
 
+def expected_type_array_as_string(expected_type_array: list) -> str:
+    """returns string of type names"""
+    a = [expected_type.__name__ for expected_type in expected_type_array]
+    return ", ".join(a)
+
+
 def verify_yaml_values(data: dict) -> dict:
     """Makes sure all values in pdf_configuration.yml are valid
     Raises error if any values are invalid.
@@ -24,18 +30,23 @@ def verify_yaml_values(data: dict) -> dict:
     # add any new settings to this dictionary (and their expected type)
     # a setting here does not have to be in the data dictionary
     setting_types = {
-        "file_path": str,
-        "draw_plots": bool,
-        "draw_reconstructions": str,
-        "num_to_show": int,
+        "train_file_path": [str],
+        "test_data_config": [str, type(None), int],
+        "draw_plots": [bool],
+        "draw_reconstructions": [str],
+        "num_to_show": [int],
     }
 
     for key, value in data.items():
-        value_type = setting_types[key]
+        expected_type_array = setting_types[key]
 
-        # noinspection PyTypeHints
-        if not isinstance(value, value_type):  # Not recognised as a valid argument by PyCharm. Ignore the error.
-            raise ValueError(key + " in pdf_configuration.yml must be a " + value_type.__name__)
+        valid = False
+        for expected_type in expected_type_array:
+            if isinstance(value, expected_type):
+                valid = True
+
+        if not valid:
+            raise ValueError(key + " in configuration.yml must be a " + expected_type_array_as_string(expected_type_array))
 
         # special cases handled below
 
@@ -46,6 +57,11 @@ def verify_yaml_values(data: dict) -> dict:
         elif key == "draw_reconstructions":
             if value not in ["yes", "no", "auto"]:
                 raise ValueError(key + " in configuration.yml must be 'yes', 'no', or 'auto'")
+
+        elif key == "test_data_config":
+            if isinstance(value, int):
+                if value <= 0:
+                    raise ValueError(key + " in configuration.yml must be more that 1")
 
     return data
 
