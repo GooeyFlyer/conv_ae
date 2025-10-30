@@ -51,12 +51,14 @@ def predict_anomalies(test_reconstructions: tf.Tensor, reshaped_test_data: np.nd
         test_date_time_series.index.isin(anomaly_indices)
     ]
 
+    anomalies = anomalies.rename(columns={"index": "file_line_number"})
+    anomalies.iloc[:, 0] += 2
+
     pd.set_option("display.max_rows", None)
     output = f"""stats:
 no. of anomalies in test_data: {len(anomaly_indices)}
 percentage of anomalies in test_data: {round(len(anomaly_indices)/len(predictions)*100, 1)}%
 \nTimestamps in test data marked as anomalies:
-test_data index, df index, Date_Time
 {anomalies}
 """
     with open(file_path, "w") as file:
@@ -103,15 +105,21 @@ def conv_ae():
     # splits raw_scaled_data depending on test_data_config
     # test_data_config can be str, int, or None. See README.md for more details
     original_train_data, original_test_data = parse_test_data_config(config_values["test_data_config"], raw_scaled_data)
+    train_len = original_train_data.shape[0]
+    test_len = original_test_data.shape[0]
 
     num_channels = raw_scaled_data.shape[1]  # number channels
 
     del raw_scaled_data
 
+    print("extending data")
     original_train_data = extend_data(original_train_data, steps_in_batch)
     original_test_data = extend_data(original_test_data, steps_in_batch)
 
-    print("train_data.shape: ", original_train_data.shape)
+    print(f"train_data extended by {original_train_data.shape[0] - train_len} datapoints")
+    print(f"test_data extended by {original_test_data.shape[0] - test_len} datapoints")
+
+    print("\ntrain_data.shape: ", original_train_data.shape)
     print("test_data.shape: ", original_test_data.shape)
 
     # batch shape, steps_in_batch, num features

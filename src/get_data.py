@@ -103,37 +103,38 @@ def format_data(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
-def split_at_index(target_index: int, raw_scaled_data: np.ndarray, common_factor: int) -> tuple[np.ndarray, np.ndarray]:
-    """
-    Returns the index where the length of both the left and right split are divisible by common_factor.
-    Attempts index target_index first, then decreases index.
-    """
-
-    # tries all index values from target_index decreasing to 1
-    for train_length in range(target_index, 1, -1):
-        test_length = raw_scaled_data.shape[0] - train_length  # test split
-
-        # both are divisible by common_factor
-        if train_length % common_factor == 0 and test_length % common_factor == 0:
-
-            # split data
-            original_train_data = raw_scaled_data[:train_length]
-            original_test_data = raw_scaled_data[train_length:]
-
-            print(f"data split into train data & anomaly detection data, at index {train_length}")
-            return original_train_data, original_test_data
-
-    gcd = math.gcd(target_index, raw_scaled_data.shape[0] - target_index)
-
-    # error if split not found where both are divisible by common_factor
-    raise ValueError(f"""\n\n
-Split cannot be found:
-    split_index: {target_index}
-    raw_scaled_data.shape: {raw_scaled_data.shape}
-    common_factor: {common_factor}
-
-Greatest Common Denominator of {target_index} and {raw_scaled_data.shape[0] - target_index} = {gcd}
-""")
+# def split_at_index(target_index: int, raw_scaled_data: np.ndarray, common_factor: int
+#                    ) -> tuple[np.ndarray, np.ndarray]:
+#     """
+#     Returns the index where the length of both the left and right split are divisible by common_factor.
+#     Attempts index target_index first, then decreases index.
+#     """
+#
+#     # tries all index values from target_index decreasing to 1
+#     for train_length in range(target_index, 1, -1):
+#         test_length = raw_scaled_data.shape[0] - train_length  # test split
+#
+#         # both are divisible by common_factor
+#         if train_length % common_factor == 0 and test_length % common_factor == 0:
+#
+#             # split data
+#             original_train_data = raw_scaled_data[:train_length]
+#             original_test_data = raw_scaled_data[train_length:]
+#
+#             print(f"data split into train data & anomaly detection data, at index {train_length}")
+#             return original_train_data, original_test_data
+#
+#     gcd = math.gcd(target_index, raw_scaled_data.shape[0] - target_index)
+#
+#     # error if split not found where both are divisible by common_factor
+#     raise ValueError(f"""\n\n
+# Split cannot be found:
+#     split_index: {target_index}
+#     raw_scaled_data.shape: {raw_scaled_data.shape}
+#     common_factor: {common_factor}
+#
+# Greatest Common Denominator of {target_index} and {raw_scaled_data.shape[0] - target_index} = {gcd}
+# """)
 
 
 def parse_test_data_config(test_data_config, raw_scaled_data) -> tuple[np.ndarray, np.ndarray]:
@@ -141,11 +142,21 @@ def parse_test_data_config(test_data_config, raw_scaled_data) -> tuple[np.ndarra
 
     if isinstance(test_data_config, int):
 
-        train_length = test_data_config
+        # translate line number in csv file to same value in dataframe
+        train_length = test_data_config - 2
+        if train_length < 0:
+            raise ValueError(f"split line num of {test_data_config} too short")  # should never happen (load_options.py)
+
+        elif train_length == len(raw_scaled_data):
+            raise ValueError(f"split line num of {test_data_config} contains no test_data")
+
         # split data
         original_train_data = raw_scaled_data[:train_length]
         original_test_data = raw_scaled_data[train_length:]
-        print(f"data split into train data & anomaly detection data, at index {train_length}")
+        print(
+            "data split into train & anomaly detection data,",
+            f"at file line {test_data_config} , df index {train_length}"
+        )
 
     elif isinstance(test_data_config, type(None)):
 
@@ -158,6 +169,10 @@ def parse_test_data_config(test_data_config, raw_scaled_data) -> tuple[np.ndarra
         test_file_path = test_data_config
         original_train_data = raw_scaled_data
         original_test_data, _, _ = process_data_scaling(test_file_path)
+
+        if original_train_data.shape[1] != original_test_data.shape[1]:
+            raise ValueError("train data and anomaly detection data must have the same number of channels")
+
         print(f"anomaly detection on data from {test_file_path}")
 
     else:

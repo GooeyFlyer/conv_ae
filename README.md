@@ -17,8 +17,8 @@ A convolutional autoencoder designed for anomaly detection in multivariate time-
 ### Option 3: Split data in one file into training and anomaly detection
 - Move 1 _.csv_ file into the data folder.
 - Open _configuration.yml_ and change _train_file_path_ to a .csv file for training.
-- Change _test_data_config_ to an index value, where you want the model to train
-on data before the index, and detect anomalies on data after the index.
+- Change _test_data_config_ to a file line number, where you want the model to train
+on data up to and including the line, and detect anomalies on data after the line.
 
 **Note:** if a split does not fit the input shape of the model, the final datapoint
 will be extended until it does.
