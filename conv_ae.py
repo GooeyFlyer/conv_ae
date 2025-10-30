@@ -9,13 +9,12 @@ from src.load_options import load_yaml
 from src.AnomalyDetector import AnomalyDetector
 
 
-def predict(model: keras.Model, test_data: np.ndarray, threshold: float) -> tf.Tensor:
+def predict(test_reconstructions: tf.Tensor, test_data: np.ndarray, threshold: float) -> tf.Tensor:
     """
     Returns:
         tensorflow array, of boolean if datapoint loss < threshold, for each datapoint (a.k.a timestamp) in test_data
     """
-    reconstructions = model(test_data)  # test_data ran through trained model. returns tensor with same shape as input
-    loss = keras.losses.mean_absolute_error(y_pred=reconstructions, y_true=test_data)
+    loss = keras.losses.mean_absolute_error(y_pred=test_reconstructions, y_true=test_data)
     return tf.math.less(loss, threshold)
 
 
@@ -33,11 +32,11 @@ def set_draw_reconstructions(draw_reconstructions: str, num_columns: int) -> boo
     return False
 
 
-def predict_anomalies(autoencoder: keras.Model, reshaped_test_data: np.ndarray, threshold: float,
+def predict_anomalies(test_reconstructions: tf.Tensor, reshaped_test_data: np.ndarray, threshold: float,
                       date_time_series: pd.Series, file_path: str = "anomaly_stats.txt") -> None:
     """predicts anomalies and saves info to .txt file"""
 
-    predictions = predict(autoencoder, reshaped_test_data, threshold)  # 1 prediction per test_data datapoint
+    predictions = predict(test_reconstructions, reshaped_test_data, threshold)  # 1 prediction per test_data datapoint
     predictions = tf.reshape(predictions, [-1])  # flatten tensor
     print("\npredictions info: ", tf.size(predictions))
 
@@ -66,25 +65,25 @@ test_data index, df index, Date_Time
     print("\nstats saved to anomaly_stats.txt")
 
 
-def calculate_loss_and_threshold(autoencoder: keras.Model,
-                                 reshaped_train_data: np.ndarray, reshaped_test_data: np.ndarray, verbose_model):
-    """threshold is calculated from reshaped_test_data"""
+def calculate_loss_and_threshold(train_reconstructions: tf.Tensor, test_reconstructions: tf.Tensor,
+                                 reshaped_train_data: np.ndarray, reshaped_test_data: np.ndarray):
+    """threshold is calculated from reshaped_train_data"""
 
     print("\ncalculating test loss, threshold, & train loss")
 
-    # reconstruction error for training data
-    # reconstructs training data (contains anomalies)
-    reconstructions = autoencoder.predict(reshaped_train_data, verbose=verbose_model)
-    train_loss = tf.reshape(keras.losses.mean_absolute_error(y_pred=reconstructions, y_true=reshaped_train_data), [-1])
+    train_loss = tf.reshape(
+        keras.losses.mean_absolute_error(y_pred=train_reconstructions, y_true=reshaped_train_data),
+        shape=[-1]
+    )
 
     # choose threshold that is one standard deviation above the mean
     threshold = float(np.mean(train_loss) + np.std(train_loss))
     print("calculated anomaly Threshold: ", threshold)
 
-    # reconstruction error for test data
-    # reconstructs testing data (contains anomalies)
-    reconstructions = autoencoder.predict(reshaped_test_data, verbose=verbose_model)
-    test_loss = tf.reshape(keras.losses.mean_absolute_error(y_pred=reconstructions, y_true=reshaped_test_data), [-1])
+    test_loss = tf.reshape(
+        keras.losses.mean_absolute_error(y_pred=test_reconstructions, y_true=reshaped_test_data),
+        shape=[-1]
+    )
 
     return train_loss, test_loss, threshold
 
@@ -142,12 +141,28 @@ def conv_ae():
         verbose={True: "auto", False: 0}[config_values["verbose_model"]],
     )
 
-    # reconstructing test_data
-    # TODO: check if this is the same as AnomalyDetector.call(reshaped_test_data)
     print("\nreconstructing data")
-    encoded_data = autoencoder.encoder(reshaped_test_data).numpy()
-    decoded_data = autoencoder.decoder(encoded_data).numpy()
+    train_reconstructions = autoencoder.predict(
+        reshaped_train_data,
+        batch_size=reshaped_train_data.shape[0],
+        verbose={True: "auto", False: 0}[config_values["verbose_model"]]
+    )
+    test_reconstructions = autoencoder.predict(
+        reshaped_test_data,
+        batch_size=reshaped_test_data.shape[0],
+        verbose={True: "auto", False: 0}[config_values["verbose_model"]]
+    )
 
+    print("\ncalculating stats of all datapoints")
+    train_loss, test_loss, threshold = calculate_loss_and_threshold(
+        train_reconstructions,
+        test_reconstructions,
+        reshaped_train_data, reshaped_test_data
+    )
+
+    del train_reconstructions, reshaped_train_data
+
+    print("\nplotting")
     plottingManager = PlottingManager(
         draw_plots=config_values["draw_plots"],  # decides if images are drawn
         draw_reconstructions=set_draw_reconstructions(config_values["draw_reconstructions"], num_channels),
@@ -155,26 +170,19 @@ def conv_ae():
         anomaly_split_len=len(original_test_data),
     )
 
+    # flatten test_reconstructions
     plottingManager.plot_reconstructions(
-        original_test_data, decoded_data.reshape(1, -1, num_channels)[0], channel_names
+        original_test_data, test_reconstructions.reshape(1, -1, num_channels)[0], channel_names
     )
 
     del original_test_data
 
-    print("\ncalculating stats of all datapoints")
-
     plottingManager.plot_model_loss_val_loss(history)
-
-    train_loss, test_loss, threshold = calculate_loss_and_threshold(
-        autoencoder,
-        reshaped_train_data, reshaped_test_data,
-        verbose_model={True: "auto", False: 0}[config_values["verbose_model"]]
-    )
 
     plottingManager.plot_loss_histograms(train_loss, test_loss, threshold)
     plottingManager.plot_loss_bar_chart(test_loss, threshold)
 
-    predict_anomalies(autoencoder, reshaped_test_data, threshold, date_time_series)
+    predict_anomalies(test_reconstructions, reshaped_test_data, threshold, date_time_series)
 
 
 if __name__ == "__main__":
