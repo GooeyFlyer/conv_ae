@@ -1,36 +1,9 @@
 import pandas as pd
 import numpy as np
-import math
 
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import MinMaxScaler
-
-import tensorflow as tf
-
-
-def process_data_tensor_flow(file_path: str):
-    """splits data, normalises data
-    issue as it does not normalise each column separately
-    assumes all columns are related"""
-
-    data = format_data(pd.read_csv(file_path, sep=";"))
-    raw_data = data.values  # numpy array
-
-    # split data
-    train_data, test_data = train_test_split(raw_data, test_size=0.2, random_state=21)  # test_size is fraction of data
-
-    # normalise data to [0, 1] - issue as it does not normalise each column separately
-    min_val = tf.reduce_min(train_data)
-    max_val = tf.reduce_max(train_data)
-
-    train_data = (train_data - min_val) / (max_val - min_val)
-    test_data = (test_data - min_val) / (max_val - min_val)
-
-    train_data = tf.cast(train_data, tf.float32)
-    test_data = tf.cast(test_data, tf.float32)
-
-    return train_data, test_data
 
 
 def process_data_scaling(file_path: str):
@@ -68,19 +41,6 @@ def process_data_scaling(file_path: str):
     return raw_scaled_data, date_time_series, column_names
 
 
-def split_data(raw_scaled_data: np.ndarray, len_column_names):
-    # split data
-    train_data, test_data = train_test_split(raw_scaled_data, test_size=0.2, shuffle=False)
-
-    print("train_data size: ", len(train_data))
-    print("test_data size: ", len(test_data))
-
-    if len(test_data[0]) != len_column_names:
-        raise ValueError("len(test_data[0]) not equal to len_column_names")
-
-    return train_data, test_data
-
-
 def format_data(data: pd.DataFrame) -> pd.DataFrame:
     """skips Date_Time column and formats data
     Returns:
@@ -101,40 +61,6 @@ def format_data(data: pd.DataFrame) -> pd.DataFrame:
     print("dataframe shape: ", data.shape)
 
     return data
-
-
-# def split_at_index(target_index: int, raw_scaled_data: np.ndarray, common_factor: int
-#                    ) -> tuple[np.ndarray, np.ndarray]:
-#     """
-#     Returns the index where the length of both the left and right split are divisible by common_factor.
-#     Attempts index target_index first, then decreases index.
-#     """
-#
-#     # tries all index values from target_index decreasing to 1
-#     for train_length in range(target_index, 1, -1):
-#         test_length = raw_scaled_data.shape[0] - train_length  # test split
-#
-#         # both are divisible by common_factor
-#         if train_length % common_factor == 0 and test_length % common_factor == 0:
-#
-#             # split data
-#             original_train_data = raw_scaled_data[:train_length]
-#             original_test_data = raw_scaled_data[train_length:]
-#
-#             print(f"data split into train data & anomaly detection data, at index {train_length}")
-#             return original_train_data, original_test_data
-#
-#     gcd = math.gcd(target_index, raw_scaled_data.shape[0] - target_index)
-#
-#     # error if split not found where both are divisible by common_factor
-#     raise ValueError(f"""\n\n
-# Split cannot be found:
-#     split_index: {target_index}
-#     raw_scaled_data.shape: {raw_scaled_data.shape}
-#     common_factor: {common_factor}
-#
-# Greatest Common Denominator of {target_index} and {raw_scaled_data.shape[0] - target_index} = {gcd}
-# """)
 
 
 def parse_test_data_config(test_data_config, raw_scaled_data) -> tuple[np.ndarray, np.ndarray]:
@@ -195,9 +121,13 @@ def extend_data(data: np.ndarray, steps_in_batch: int) -> np.ndarray:
 
 if __name__ == "__main__":
 
-    # print(get_data(10, 3, 2))
+    from src.load_options import load_yaml
+    import os
 
-    a, _, _ = process_data_scaling("../data/FeatureDataSel.csv")
+    os.chdir("../")
+    config_values = load_yaml("configuration.yml")  # ENV Variables
+
+    a, _, _ = process_data_scaling(config_values["train_file_path"])
 
     a = a[50:]
     print("test data shape: ", a.shape)
