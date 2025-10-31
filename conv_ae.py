@@ -100,7 +100,8 @@ def conv_ae():
     # normalise data
     raw_scaled_data, date_time_series, channel_names = process_data_scaling(config_values["train_file_path"])
 
-    steps_in_batch = 12  # no. of neurons
+    steps_in_batch = 16  # no. of neurons
+    epochs = 200
 
     # splits raw_scaled_data depending on test_data_config
     # test_data_config can be str, int, or None. See README.md for more details
@@ -143,7 +144,7 @@ def conv_ae():
     print("training model")
     history = autoencoder.fit(
         reshaped_train_data, reshaped_train_data,
-        epochs=100,
+        epochs=epochs,
         validation_data=(reshaped_test_data, reshaped_test_data),
         shuffle=False,
         verbose={True: "auto", False: 0}[config_values["verbose_model"]],

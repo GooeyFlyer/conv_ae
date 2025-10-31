@@ -9,8 +9,8 @@ class AnomalyDetector(Model):
         super(AnomalyDetector, self).__init__()
 
         strides = 1  # by how many datapoints the filter will move as it slides over input.
-        pool_size = 2
-        kernel_size = 5
+        pool_size = 4
+        kernel_size = 7
         activation = "relu"
 
         # down-samples and learns spatial features
