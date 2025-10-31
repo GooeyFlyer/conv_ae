@@ -33,7 +33,7 @@ class AnomalyDetector(Model):
 
         # down-samples and learns spatial features
         self.decoder = Sequential([
-            layers.Input((steps_in_batch//4 + steps_in_batch % 4, num_columns*2)),
+            layers.Input((steps_in_batch//(pool_size*pool_size) + steps_in_batch % (pool_size*pool_size), num_columns*2)),
 
             # expands dimensionality of input by factor pool_size
             layers.UpSampling1D(size=pool_size),
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     # simple usage
 
     # batche size, datapoints in batch, features
-    data = np.random.rand(100, 12, 18)
+    data = np.random.rand(100, 16, 18)
 
     # build model
     autoencoder = AnomalyDetector(data.shape[1], data.shape[2])
