@@ -109,19 +109,30 @@ Limiting to {anomaly_split_len}""")
         ax.set_ylabel("Frequency")
         ax.legend()
 
-    def plot_loss_bar_chart(self, test_loss: tf.Tensor, threshold: float):
-        """plot of loss value for each test_data, with line for anomaly threshold"""
+    def plot_loss_line_chart(self, test_loss: tf.Tensor, threshold: float, zoomed: bool, start_index: int = 0):
+        """
+        plot of loss value for each test_data, with line for anomaly threshold
+        parameter zoomed only changes title and file name
+        """
 
         if self.draw_plots:
+
+            zoomed_string = {True: "_zoomed", False: ""}[zoomed]
+
             fig, ax = plt.subplots(figsize=(10, 6))
-            ax.plot(range(len(test_loss[:self.num_to_show])), test_loss[:self.num_to_show], label=f"test loss")
+
+            x = range(start_index, len(test_loss[:self.num_to_show])+start_index)
+
+            ax.plot(x, test_loss[:self.num_to_show], label=f"test loss")
             ax.axhline(y=threshold, color="r", label="anomaly threshold")
-            ax.set_title(f"reconstruction loss in first {self.num_to_show} timestamps in test_data")
+
+            ax.set_title(f"""reconstruction loss in {zoomed_string[1:]} test_data""")
             ax.set_xlabel("Timestamp")
+            ax.set_ylim(0)
             ax.set_ylabel("Reconstruction loss")
             ax.legend()
 
-            self.save_fig(fig, os.path.join(self.stats_path, "Test_Loss.png"))
+            self.save_fig(fig, os.path.join(self.stats_path, f"Test_Loss{zoomed_string}.png"))
 
     def save_fig(self, fig: plt.Figure, file_path: str, verbose: bool = True):
         """Saves pyplot fig to file_path.

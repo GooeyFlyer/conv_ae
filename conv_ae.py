@@ -67,6 +67,18 @@ percentage of anomalies in test_data: {round(len(anomaly_indices)/len(prediction
     print("\nstats saved to anomaly_stats.txt")
 
 
+def zoom_loss_into_largest_loss(train_loss: tf.Tensor):
+    """returns numpy array with the largest loss value in center, and 50 datapoints on each side"""
+
+    largest_index = np.argmax(train_loss)
+    padding = 50
+
+    first = max([largest_index-padding, 0])  # limits lowest index to 0
+    zoomed = train_loss[first:largest_index+padding]
+
+    return zoomed, first
+
+
 def calculate_loss_and_threshold(train_reconstructions: tf.Tensor, test_reconstructions: tf.Tensor,
                                  reshaped_train_data: np.ndarray, reshaped_test_data: np.ndarray):
     """threshold is calculated from reshaped_train_data"""
@@ -95,7 +107,8 @@ def conv_ae():
     normalise data, split data, build model, train model, reconstruct test_data, plot graphs, find anomalies
     """
 
-    config_values = load_yaml("configuration.yml")  # ENV Variables
+    config_values = load_yaml("configuration.yml")  # ENV
+    verbose = {True: "auto", False: 0}[config_values["verbose_model"]]
 
     # normalise data
     raw_scaled_data, date_time_series, channel_names = process_data_scaling(config_values["train_file_path"])
@@ -147,19 +160,19 @@ def conv_ae():
         epochs=epochs,
         validation_data=(reshaped_test_data, reshaped_test_data),
         shuffle=False,
-        verbose={True: "auto", False: 0}[config_values["verbose_model"]],
+        verbose=verbose
     )
 
     print("\nreconstructing data")
     train_reconstructions = autoencoder.predict(
         reshaped_train_data,
         batch_size=reshaped_train_data.shape[0],
-        verbose={True: "auto", False: 0}[config_values["verbose_model"]]
+        verbose=verbose
     )
     test_reconstructions = autoencoder.predict(
         reshaped_test_data,
         batch_size=reshaped_test_data.shape[0],
-        verbose={True: "auto", False: 0}[config_values["verbose_model"]]
+        verbose=verbose
     )
 
     print("\ncalculating stats of all datapoints")
@@ -188,8 +201,14 @@ def conv_ae():
 
     plottingManager.plot_model_loss_val_loss(history)
 
+    del history
+
     plottingManager.plot_loss_histograms(train_loss, test_loss, threshold)
-    plottingManager.plot_loss_bar_chart(test_loss, threshold)
+
+    plottingManager.plot_loss_line_chart(test_loss, threshold, False)
+
+    zoomed, first = zoom_loss_into_largest_loss(test_loss)
+    plottingManager.plot_loss_line_chart(zoomed, threshold, True, start_index=first)
 
     predict_anomalies(test_reconstructions, reshaped_test_data, threshold, date_time_series)
 
