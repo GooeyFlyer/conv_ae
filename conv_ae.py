@@ -67,18 +67,6 @@ percentage of anomalies in test_data: {round(len(anomaly_indices)/len(prediction
     print("\nstats saved to anomaly_stats.txt")
 
 
-def zoom_loss_into_largest_loss(train_loss: tf.Tensor):
-    """returns numpy array with the largest loss value in center, and 50 datapoints on each side"""
-
-    largest_index = np.argmax(train_loss)
-    padding = 50
-
-    first = max([largest_index-padding, 0])  # limits lowest index to 0
-    zoomed = train_loss[first:largest_index+padding]
-
-    return zoomed, first
-
-
 def calculate_loss_and_threshold(train_reconstructions: tf.Tensor, test_reconstructions: tf.Tensor,
                                  reshaped_train_data: np.ndarray, reshaped_test_data: np.ndarray):
     """threshold is calculated from reshaped_train_data"""
@@ -205,10 +193,8 @@ def conv_ae():
 
     plottingManager.plot_loss_histograms(train_loss, test_loss, threshold)
 
-    plottingManager.plot_loss_line_chart(test_loss, threshold, False)
-
-    zoomed, first = zoom_loss_into_largest_loss(test_loss)
-    plottingManager.plot_loss_line_chart(zoomed, threshold, True, start_index=first)
+    plottingManager.plot_loss_line_chart(test_loss, threshold)
+    plottingManager.plot_zoomed_loss_line_chart(test_loss, threshold)
 
     predict_anomalies(test_reconstructions, reshaped_test_data, threshold, date_time_series)
 

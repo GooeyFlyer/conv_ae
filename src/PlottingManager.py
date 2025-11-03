@@ -109,33 +109,56 @@ Limiting to {anomaly_split_len}""")
         ax.set_ylabel("Frequency")
         ax.legend()
 
-    def plot_loss_line_chart(self, test_loss: tf.Tensor, threshold: float, zoomed: bool, start_index: int = 0):
+    def plot_loss_line_chart(self, test_loss: tf.Tensor, threshold: float):
         """
         plot of loss value for each test_data, with line for anomaly threshold
         parameter zoomed only changes title and file name
         """
 
         if self.draw_plots:
-
-            zoomed_string = {True: "_zoomed", False: ""}[zoomed]
-
             fig, ax = plt.subplots(figsize=(10, 6))
 
-            x = range(start_index, len(test_loss[:self.num_to_show])+start_index)
+            self.draw_loss_line(ax, test_loss[:self.num_to_show], threshold)
 
-            ax.plot(x, test_loss[:self.num_to_show], label=f"test loss")
-            ax.axhline(y=threshold, color="r", label="anomaly threshold")
-
-            ax.set_title(f"""reconstruction loss in {zoomed_string[1:]} test_data""")
-            ax.set_xlabel("Timestamp")
             ax.set_ylim(0)
-            ax.set_ylabel("Reconstruction loss")
-            ax.legend()
+            ax.set_title(f"""reconstruction loss in test_data""")
 
-            self.save_fig(fig, os.path.join(self.stats_path, f"Test_Loss{zoomed_string}.png"))
+            self.save_fig(fig, os.path.join(self.stats_path, f"Test_Loss.png"))
+
+    def plot_zoomed_loss_line_chart(self, test_loss: tf.Tensor, threshold: float):
+        """
+        plot of loss value for test_data, zoomed into the largest loss, with line for anomaly threshold
+        """
+
+        if self.draw_plots:
+            fig, ax = plt.subplots(figsize=(10, 6))
+
+            y = test_loss[:self.num_to_show]
+            self.draw_loss_line(ax, y, threshold)
+
+            max_loss = np.max(test_loss[:self.num_to_show])
+            max_x = range(len(y))[np.argmax(y)]  # x value of max_loss
+
+            # padding of 50 indexes around max_x
+            # max(max_x-50, 0) so the lowest index is not negative
+            ax.set_xlim(max(max_x-50, 0), max_x+50)
+            ax.set_ylim(0, max_loss+0.1)
+            ax.set_title(f"""reconstruction loss in test_data, zoomed to highest loss""")
+
+            self.save_fig(fig, os.path.join(self.stats_path, f"Test_Loss_Zoomed.png"))
+
+    def draw_loss_line(self, ax: plt.Axes, y: tf.Tensor, threshold: float):
+        """draws line chart with set styling"""
+
+        ax.plot(range(len(y)), y, label=f"test loss")
+        ax.axhline(y=threshold, color="r", label="anomaly threshold")
+
+        ax.set_xlabel("Timestamp")
+        ax.set_ylabel("Reconstruction loss")
+        ax.legend()
 
     def save_fig(self, fig: plt.Figure, file_path: str, verbose: bool = True):
-        """Saves pyplot fig to file_path.
+        """Saves pyplot fig to file_path & clears pyplot.
         verbose decides if file saved message displayed, default = True"""
 
         fig.savefig(file_path)
