@@ -78,8 +78,8 @@ def calculate_loss_and_threshold(train_reconstructions: tf.Tensor, test_reconstr
         shape=[-1]
     )
 
-    # choose threshold that is one standard deviation above the mean
-    threshold = float(np.mean(train_loss) + np.std(train_loss))
+    # choose threshold that is two standard deviations above the mean - contains 95% of data
+    threshold = float(np.mean(train_loss) + (2*np.std(train_loss)))
     print("calculated anomaly Threshold: ", threshold)
 
     test_loss = tf.reshape(
