@@ -7,6 +7,7 @@ from src.get_data import process_data_scaling, split_by_test_data_config, extend
 from src.PlottingManager import PlottingManager
 from src.load_options import load_yaml
 from src.AnomalyDetector import AnomalyDetector
+from src.data_augmentation import augment_magnitude_warping
 
 
 def predict(test_reconstructions: tf.Tensor, test_data: np.ndarray, threshold: float) -> tf.Tensor:
@@ -124,9 +125,12 @@ def conv_ae():
     print("\ntrain_data.shape: ", original_train_data.shape)
     print("test_data.shape: ", original_test_data.shape)
 
+    print("\nextending train_data with magnitude warping")
+    original_train_data = np.concatenate((original_train_data, augment_magnitude_warping(original_train_data)[0]), axis=0)
+
     # batch shape, steps_in_batch, num features
-    reshaped_train_data = original_train_data.reshape(-1, steps_in_batch, num_channels)
-    reshaped_test_data = original_test_data.reshape(-1, steps_in_batch, num_channels)
+    reshaped_train_data = original_train_data.reshape((-1, steps_in_batch, num_channels))
+    reshaped_test_data = original_test_data.reshape((-1, steps_in_batch, num_channels))
 
     del original_train_data
 
