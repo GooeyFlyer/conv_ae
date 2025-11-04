@@ -3,7 +3,7 @@ import numpy as np
 import tensorflow as tf
 import pandas as pd
 
-from src.get_data import process_data_scaling, parse_test_data_config, extend_data
+from src.get_data import process_data_scaling, split_by_test_data_config, extend_data
 from src.PlottingManager import PlottingManager
 from src.load_options import load_yaml
 from src.AnomalyDetector import AnomalyDetector
@@ -106,7 +106,7 @@ def conv_ae():
 
     # splits raw_scaled_data depending on test_data_config
     # test_data_config can be str, int, or None. See README.md for more details
-    original_train_data, original_test_data = parse_test_data_config(config_values["test_data_config"], raw_scaled_data)
+    original_train_data, original_test_data = split_by_test_data_config(config_values["test_data_config"], raw_scaled_data)
     train_len = original_train_data.shape[0]
     test_len = original_test_data.shape[0]
 
@@ -156,12 +156,12 @@ def conv_ae():
         reshaped_train_data,
         batch_size=reshaped_train_data.shape[0],
         verbose=verbose
-    )
+    )  # tf.Tensor
     test_reconstructions = autoencoder.predict(
         reshaped_test_data,
         batch_size=reshaped_test_data.shape[0],
         verbose=verbose
-    )
+    )  # tf.Tensor
 
     print("\ncalculating stats of all datapoints")
     train_loss, test_loss, threshold = calculate_loss_and_threshold(
@@ -185,11 +185,9 @@ def conv_ae():
         original_test_data, test_reconstructions.reshape(1, -1, num_channels)[0], channel_names
     )
 
-    del original_test_data
-
     plottingManager.plot_model_loss_val_loss(history)
 
-    del history
+    del original_test_data, history
 
     plottingManager.plot_loss_histograms(train_loss, test_loss, threshold)
 

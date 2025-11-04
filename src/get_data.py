@@ -62,7 +62,7 @@ def format_data(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
-def parse_test_data_config(test_data_config, raw_scaled_data) -> tuple[np.ndarray, np.ndarray]:
+def split_by_test_data_config(test_data_config, raw_scaled_data) -> tuple[np.ndarray, np.ndarray]:
     """returns a split of raw_scaled_data, depending on test_data_config type"""
 
     if isinstance(test_data_config, int):
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     print("extend_data return shape: ", extend_data(a, 12).shape)
     print("")
 
-    oa, ob = parse_test_data_config(test_data_config=1200, raw_scaled_data=a)
+    oa, ob = split_by_test_data_config(test_data_config=1200, raw_scaled_data=a)
 
     print("\nextended split shapes:")
     print("oa.shape: ", extend_data(oa, 12).shape)

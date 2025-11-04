@@ -34,7 +34,7 @@ Limiting to {anomaly_split_len}""")
         if self.draw_plots and self.draw_reconstructions:
             print("\nplotting test data against reconstructed data")
             print(f"only first {self.num_to_show} datapoints")
-            for x in range(0, len(test_data[0])):
+            for x in range(0, test_data.shape[1]):  # for every channel
                 fig, ax = plt.subplots(figsize=(10, 6))
                 ax.plot((test_data[:, x])[:self.num_to_show], label=f"test", color="b")
                 ax.plot((decoded_data[:, x])[:self.num_to_show], label=f"reconstructed", color="r")
