@@ -1,6 +1,7 @@
 import tensorflow as tf
 from keras import Sequential, layers
 from keras.models import Model
+from keras.utils import plot_model
 import numpy as np
 
 
@@ -69,6 +70,9 @@ if __name__ == "__main__":
     autoencoder.compile(optimizer="adam", loss="mae")
     autoencoder.encoder.summary()
     autoencoder.decoder.summary()
+
+    plot_model(autoencoder.encoder, to_file="../models/encoder.png", show_shapes=True, show_layer_names=True)
+    plot_model(autoencoder.decoder, to_file="../models/decoder.png", show_shapes=True, show_layer_names=True)
 
     history = autoencoder.fit(
         data, data,
