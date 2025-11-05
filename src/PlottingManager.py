@@ -18,11 +18,16 @@ class PlottingManager:
         self.stats_path = "images/stats"
         self.draw_reconstructions = draw_reconstructions
 
-        self.num_to_show = num_to_show
-        if num_to_show > anomaly_split_len:
+        if num_to_show is None:
+            self.num_to_show = anomaly_split_len
+
+        elif num_to_show > anomaly_split_len:
             print(f"""num_to_show ({num_to_show}) larger than anomaly detection split ({anomaly_split_len}).
 Limiting to {anomaly_split_len}""")
             self.num_to_show = anomaly_split_len
+
+        else:
+            self.num_to_show = num_to_show
 
         if self.draw_plots:
             self.clear_images_folder(self.plots_path)
@@ -142,7 +147,7 @@ Limiting to {anomaly_split_len}""")
             # padding of 50 indexes around max_x
             # max(max_x-50, 0) so the lowest index is not negative
             ax.set_xlim(max(max_x-50, 0), max_x+50)
-            ax.set_ylim(0, max_loss+0.1)
+            ax.set_ylim(0)
             ax.set_title(f"""reconstruction loss in test_data, zoomed to highest loss""")
 
             self.save_fig(fig, os.path.join(self.stats_path, f"Test_Loss_Zoomed.png"))

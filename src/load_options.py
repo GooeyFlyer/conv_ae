@@ -34,7 +34,7 @@ def verify_yaml_values(data: dict) -> dict:
         "test_data_config": [str, type(None), int],
         "draw_plots": [bool],
         "draw_reconstructions": [str],
-        "num_to_show": [int],
+        "num_to_show": [int, type(None)],
         "verbose_model": [bool],
     }
 
@@ -54,8 +54,9 @@ def verify_yaml_values(data: dict) -> dict:
         # special cases handled below
 
         elif key in ["num_to_show"]:
-            if value <= 0:
-                raise ValueError(key + " in configuration.yml must at least 1")
+            if isinstance(value, int):
+                if value <= 0:
+                    raise ValueError(key + " in configuration.yml must at least 1")
 
         elif key == "draw_reconstructions":
             if value not in ["yes", "no", "auto"]:

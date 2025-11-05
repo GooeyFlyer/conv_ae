@@ -125,8 +125,8 @@ def conv_ae():
     print("test_data.shape: ", original_test_data.shape)
 
     # batch shape, steps_in_batch, num features
-    reshaped_train_data = original_train_data.reshape(-1, steps_in_batch, num_channels)
-    reshaped_test_data = original_test_data.reshape(-1, steps_in_batch, num_channels)
+    reshaped_train_data = original_train_data.reshape((-1, steps_in_batch, num_channels))
+    reshaped_test_data = original_test_data.reshape((-1, steps_in_batch, num_channels))
 
     del original_train_data
 
