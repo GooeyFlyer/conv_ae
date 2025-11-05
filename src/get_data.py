@@ -5,7 +5,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import MinMaxScaler
 
 
-def process_data_scaling(file_path: str):
+def process_data_scaling(data: pd.DataFrame):
     """
     imputes missing values, scales columns independently
 
@@ -14,7 +14,8 @@ def process_data_scaling(file_path: str):
         pandas.Series: Series of time stamps
         clist: array of column names
     """
-    data = format_data(pd.read_csv(file_path, sep=";"))
+
+    data = format_data(data)
 
     date_time_series = data.pop("Date_Time")  # remove Date_Time column
     date_time_series = date_time_series.apply(lambda x: x[:-13])  # remove last 13 characters (time info)
@@ -118,15 +119,46 @@ def extend_data(data: np.ndarray, steps_in_batch: int) -> np.ndarray:
     return data
 
 
+def data_operations(raw_scaled_data: np.ndarray, input_neurons: int, num_channels: int, config_values: dict):
+    # normalise data
+
+    # splits raw_scaled_data depending on test_data_config
+    # test_data_config can be str, int, or None. See README.md for more details
+    original_train_data, original_test_data = split_by_test_data_config(config_values["test_data_config"],
+                                                                        raw_scaled_data)
+    train_len = original_train_data.shape[0]
+    test_len = original_test_data.shape[0]
+
+    del raw_scaled_data
+
+    print("extending data")
+    original_train_data = extend_data(original_train_data, input_neurons)
+    original_test_data = extend_data(original_test_data, input_neurons)
+
+    print(f"train_data extended by {original_train_data.shape[0] - train_len} datapoints")
+    print(f"test_data extended by {original_test_data.shape[0] - test_len} datapoints")
+
+    print("\ntrain_data.shape: ", original_train_data.shape)
+    print("test_data.shape: ", original_test_data.shape)
+
+    # batch shape, steps_in_batch, num features
+    reshaped_train_data = original_train_data.reshape((-1, input_neurons, num_channels))
+    reshaped_test_data = original_test_data.reshape((-1, input_neurons, num_channels))
+
+    print("\n")
+
+    return original_train_data, original_test_data, reshaped_train_data, reshaped_test_data
+
+
 if __name__ == "__main__":
 
     from src.load_options import load_yaml
     import os
 
     os.chdir("../")
-    config_values = load_yaml("configuration.yml")  # ENV Variables
+    c = load_yaml("configuration.yml")  # ENV Variables
 
-    a, _, _ = process_data_scaling(config_values["train_file_path"])
+    a, _, _ = process_data_scaling(c["train_file_path"])
 
     a = a[50:]
     print("test data shape: ", a.shape)

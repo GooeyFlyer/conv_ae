@@ -3,13 +3,13 @@ import numpy as np
 import tensorflow as tf
 import pandas as pd
 
-from src.get_data import process_data_scaling, split_by_test_data_config, extend_data
+from src.get_data import process_data_scaling, data_operations
 from src.PlottingManager import PlottingManager
 from src.load_options import load_yaml
 from src.AnomalyDetector import AnomalyDetector
 
 
-def predict(test_reconstructions: tf.Tensor, test_data: np.ndarray, threshold: float) -> tf.Tensor:
+def loss_below_threshold(test_reconstructions: tf.Tensor, test_data: np.ndarray, threshold: float) -> tf.Tensor:
     """
     Returns:
         tensorflow array, of boolean if datapoint loss < threshold, for each datapoint (a.k.a timestamp) in test_data
@@ -32,11 +32,12 @@ def set_draw_reconstructions(draw_reconstructions: str, num_columns: int) -> boo
     return False
 
 
-def predict_anomalies(test_reconstructions: tf.Tensor, reshaped_test_data: np.ndarray, threshold: float,
+def write_anomalies(test_reconstructions: tf.Tensor, reshaped_test_data: np.ndarray, threshold: float,
                       date_time_series: pd.Series, file_path: str = "anomaly_stats.txt") -> None:
     """predicts anomalies and saves info to .txt file"""
 
-    predictions = predict(test_reconstructions, reshaped_test_data, threshold)  # 1 prediction per test_data datapoint
+    # 1 prediction per test_data datapoint
+    predictions = loss_below_threshold(test_reconstructions, reshaped_test_data, threshold)
     predictions = tf.reshape(predictions, [-1])  # flatten tensor
     print("\npredictions info: ", tf.size(predictions))
 
@@ -91,50 +92,24 @@ def calculate_loss_and_threshold(train_reconstructions: tf.Tensor, test_reconstr
     return train_loss, test_loss, threshold
 
 
-def conv_ae():
+def anomaly_detection(data: pd.DataFrame, config_values: dict):
     """
     normalise data, split data, build model, train model, reconstruct test_data, plot graphs, find anomalies
     """
 
-    config_values = load_yaml("configuration.yml")  # ENV
+    raw_scaled_data, date_time_series, channel_names = process_data_scaling(data)
+    num_channels = raw_scaled_data.shape[1]  # number of columns / features
+
+    original_train_data, original_test_data, reshaped_train_data, reshaped_test_data = data_operations(
+        raw_scaled_data, config_values["input_neurons"], num_channels, config_values
+    )
+
     verbose = {True: "auto", False: 0}[config_values["verbose_model"]]
-
-    # normalise data
-    raw_scaled_data, date_time_series, channel_names = process_data_scaling(config_values["train_file_path"])
-
-    steps_in_batch = config_values["input_neurons"]  # no. of neurons
-    epochs = config_values["epochs"]
-
-    # splits raw_scaled_data depending on test_data_config
-    # test_data_config can be str, int, or None. See README.md for more details
-    original_train_data, original_test_data = split_by_test_data_config(config_values["test_data_config"], raw_scaled_data)
-    train_len = original_train_data.shape[0]
-    test_len = original_test_data.shape[0]
-
-    num_channels = raw_scaled_data.shape[1]  # number channels
-
-    del raw_scaled_data
-
-    print("extending data")
-    original_train_data = extend_data(original_train_data, steps_in_batch)
-    original_test_data = extend_data(original_test_data, steps_in_batch)
-
-    print(f"train_data extended by {original_train_data.shape[0] - train_len} datapoints")
-    print(f"test_data extended by {original_test_data.shape[0] - test_len} datapoints")
-
-    print("\ntrain_data.shape: ", original_train_data.shape)
-    print("test_data.shape: ", original_test_data.shape)
-
-    # batch shape, steps_in_batch, num features
-    reshaped_train_data = original_train_data.reshape((-1, steps_in_batch, num_channels))
-    reshaped_test_data = original_test_data.reshape((-1, steps_in_batch, num_channels))
-
-    print("\n")
 
     # build model
     print("building model")
     autoencoder = AnomalyDetector(
-        num_input_neurons=steps_in_batch,
+        num_input_neurons=config_values["input_neurons"],
         num_features=num_channels,
         strides=config_values["strides"],
         pool_size=config_values["pool_size"],
@@ -151,7 +126,7 @@ def conv_ae():
     print("training model")
     history = autoencoder.fit(
         reshaped_train_data, reshaped_train_data,
-        epochs=epochs,
+        epochs=config_values["epochs"],
         validation_data=(reshaped_test_data, reshaped_test_data),
         shuffle=False,
         verbose=verbose
@@ -210,8 +185,16 @@ def conv_ae():
     plottingManager.plot_loss_line_chart(test_loss, threshold)
     plottingManager.plot_zoomed_loss_line_chart(test_loss, threshold)
 
-    predict_anomalies(test_reconstructions, reshaped_test_data, threshold, date_time_series)
+    write_anomalies(test_reconstructions, reshaped_test_data, threshold, date_time_series)
+
+
+def conv_ae():
+    config_values = load_yaml("configuration.yml")  # ENV
+    data = pd.read_csv(config_values["train_file_path"], sep=";")
+
+    anomaly_detection(data, config_values)
 
 
 if __name__ == "__main__":
+
     conv_ae()
