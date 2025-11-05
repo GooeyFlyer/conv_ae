@@ -5,7 +5,6 @@ import pandas as pd
 
 from src.get_data import process_data_scaling, data_operations
 from src.PlottingManager import PlottingManager
-from src.load_options import load_yaml
 from src.AnomalyDetector import AnomalyDetector
 
 
@@ -186,15 +185,3 @@ def anomaly_detection(data: pd.DataFrame, config_values: dict):
     plottingManager.plot_zoomed_loss_line_chart(test_loss, threshold)
 
     write_anomalies(test_reconstructions, reshaped_test_data, threshold, date_time_series)
-
-
-def conv_ae():
-    config_values = load_yaml("configuration.yml")  # ENV
-    data = pd.read_csv(config_values["train_file_path"], sep=";")
-
-    anomaly_detection(data, config_values)
-
-
-if __name__ == "__main__":
-
-    conv_ae()
