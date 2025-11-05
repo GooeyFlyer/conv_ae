@@ -6,7 +6,8 @@ import os
 
 
 class PlottingManager:
-    def __init__(self, draw_plots: bool, num_to_show: int, draw_reconstructions: bool, anomaly_split_len: int):
+    def __init__(self, draw_plots: bool, num_to_show: int, draw_reconstructions: bool, error_plot: str,
+                 anomaly_split_len: int):
         """
         Parameters:
             draw_plots (bool): decides if images are drawn
@@ -19,6 +20,7 @@ class PlottingManager:
         self.test_reconstructions_path = "images/plots/test_reconstructions"
         self.stats_path = "images/stats"
         self.draw_reconstructions = draw_reconstructions
+        self.error_plot = error_plot
 
         if num_to_show is None:
             self.num_to_show = anomaly_split_len
@@ -35,7 +37,8 @@ Limiting to {anomaly_split_len}""")
             for x in [self.train_reconstructions_path, self.test_reconstructions_path, self.stats_path]:
                 self.clear_images_folder(x)
 
-    def plot_reconstructions(self, split_name: str, original_data: np.ndarray, reconstructed_data: np.ndarray, loss, column_names):
+    def plot_reconstructions(self, split_name: str, original_data: np.ndarray, reconstructed_data: np.ndarray, loss,
+                             column_names):
         """plot original data against reconstructed data"""
 
         if self.draw_plots and self.draw_reconstructions:
@@ -44,11 +47,21 @@ Limiting to {anomaly_split_len}""")
             for x in range(0, original_data.shape[1]):  # for every channel
                 fig, ax = plt.subplots(figsize=(10, 6))
                 ax.plot((original_data[:, x])[:self.num_to_show], label="original data", color="b")
-                ax.plot((reconstructed_data[:, x])[:self.num_to_show], label="reconstructed", color="lightcoral")
+                ax.plot((reconstructed_data[:, x])[:self.num_to_show], label="reconstructed", color="r")
                 ax.plot(loss[:self.num_to_show], label="loss", color="g")
 
-                diff = abs(original_data[:, x] - reconstructed_data[:, x])
-                ax.plot(diff[:self.num_to_show], label="error", color="r")
+                if self.error_plot == "floor":
+                    diff = abs(original_data[:, x] - reconstructed_data[:, x])
+                    ax.plot(diff[:self.num_to_show], label="error", color="lightcoral")
+                elif self.error_plot == "between":
+                    ax.fill_between(
+                        np.arange(len((original_data[:, x])[:self.num_to_show])),
+                        (original_data[:, x])[:self.num_to_show],
+                        (reconstructed_data[:, x])[:self.num_to_show],
+                        label="error", color="lightcoral"
+                    )
+                else:
+                    raise ValueError("error_plot for PlottingManager not 'between' or 'floor'")
 
                 # ax.set_xticklabels(date_time_series)
                 ax.set_ylim(0, 1)
@@ -154,7 +167,7 @@ Limiting to {anomaly_split_len}""")
 
             # padding of 50 indexes around max_x
             # max(max_x-50, 0) so the lowest index is not negative
-            ax.set_xlim(max(max_x-50, 0), max_x+50)
+            ax.set_xlim(max(max_x - 50, 0), max_x + 50)
             ax.set_ylim(0)
             ax.set_title(f"""reconstruction loss in test_data, zoomed to highest loss""")
 

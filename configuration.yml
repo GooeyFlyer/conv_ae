@@ -5,6 +5,7 @@ data:
 other:
   draw_plots: True  # decides if images are drawn
   draw_reconstructions: auto  # decides if reconstruction plots are drawn. "auto" draws if channels <= 20
+  error_plot: between # picks how error between real and reconstructed error is drawn. "between" or "floor"
   num_to_show: # datapoints from index 0 (inclusive) that are plotted
   verbose_model: False
 

@@ -39,6 +39,7 @@ def verify_yaml_values(data: dict) -> dict:
         "test_data_config": [str, type(None), int],
         "draw_plots": [bool],
         "draw_reconstructions": [str],
+        "error_plot": [str],
         "num_to_show": [int, type(None)],
         "verbose_model": [bool],
         "strides": [int],
@@ -79,6 +80,10 @@ def verify_yaml_values(data: dict) -> dict:
         elif key == "draw_reconstructions":
             if value not in ["yes", "no", "auto"]:
                 raise ValueError(key + " in configuration.yml must be 'yes', 'no', or 'auto'")
+
+        elif key == "error_plots":
+            if value not in ["between", "floor"]:
+                raise ValueError(key + " in configuration.yml must be 'between' or 'floor'")
 
         elif key == "test_data_config":
             if isinstance(value, int):
