@@ -12,9 +12,11 @@ class PlottingManager:
             draw_plots (bool): decides if images are drawn
             num_to_show (int): datapoints from index 0 (inclusive) that are plotted
             draw_reconstructions (bool): decides if reconstruction plots are drawn
+            anomaly_split_len (int): the length of data for anomaly detection
         """
         self.draw_plots = draw_plots
-        self.plots_path = "images/plots"
+        self.train_reconstructions_path = "images/plots/train_reconstructions"
+        self.test_reconstructions_path = "images/plots/test_reconstructions"
         self.stats_path = "images/stats"
         self.draw_reconstructions = draw_reconstructions
 
@@ -30,25 +32,23 @@ Limiting to {anomaly_split_len}""")
             self.num_to_show = num_to_show
 
         if self.draw_plots:
-            self.clear_images_folder(self.plots_path)
-            self.clear_images_folder(self.stats_path)
+            for x in [self.train_reconstructions_path, self.test_reconstructions_path, self.stats_path]:
+                self.clear_images_folder(x)
 
-    def plot_reconstructions(self, test_data, decoded_data, column_names):
-        """plot test data against reconstructed test data"""
+    def plot_reconstructions(self, split_name: str, original_data: np.ndarray, reconstructed_data: np.ndarray, loss, column_names):
+        """plot original data against reconstructed data"""
 
         if self.draw_plots and self.draw_reconstructions:
-            print("\nplotting test data against reconstructed data")
+            print("\nplotting original data against reconstructed data")
             print(f"only first {self.num_to_show} datapoints")
-            for x in range(0, test_data.shape[1]):  # for every channel
+            for x in range(0, original_data.shape[1]):  # for every channel
                 fig, ax = plt.subplots(figsize=(10, 6))
-                ax.plot((test_data[:, x])[:self.num_to_show], label=f"test", color="b")
-                ax.plot((decoded_data[:, x])[:self.num_to_show], label=f"reconstructed", color="r")
-                ax.fill_between(
-                    np.arange(len((test_data[:, x])[:self.num_to_show])),
-                    (decoded_data[:, x])[:self.num_to_show],
-                    (test_data[:, x])[:self.num_to_show],
-                    label="error", color="lightcoral"
-                )
+                ax.plot((original_data[:, x])[:self.num_to_show], label="original data", color="b")
+                ax.plot((reconstructed_data[:, x])[:self.num_to_show], label="reconstructed", color="lightcoral")
+                ax.plot(loss[:self.num_to_show], label="loss", color="g")
+
+                diff = abs(original_data[:, x] - reconstructed_data[:, x])
+                ax.plot(diff[:self.num_to_show], label="error", color="r")
 
                 # ax.set_xticklabels(date_time_series)
                 ax.set_ylim(0, 1)
@@ -58,7 +58,15 @@ Limiting to {anomaly_split_len}""")
                 ax.legend()
 
                 file_name = f"plot_{column_names[x]}.png"
-                self.save_fig(fig, os.path.join(self.plots_path, file_name), verbose=False)
+
+                if split_name == "test":
+                    full_path = os.path.join(self.test_reconstructions_path, file_name)
+                elif split_name == "train":
+                    full_path = os.path.join(self.train_reconstructions_path, file_name)
+                else:
+                    raise ValueError(f"""split_name must be "test" or "train", currently {split_name}""")
+
+                self.save_fig(fig, full_path, verbose=False)
 
             print("plots saved to images/plots/")
 

@@ -128,8 +128,6 @@ def conv_ae():
     reshaped_train_data = original_train_data.reshape((-1, steps_in_batch, num_channels))
     reshaped_test_data = original_test_data.reshape((-1, steps_in_batch, num_channels))
 
-    del original_train_data
-
     print("\n")
 
     # build model
@@ -170,7 +168,7 @@ def conv_ae():
         reshaped_train_data, reshaped_test_data
     )
 
-    del train_reconstructions, reshaped_train_data
+    del reshaped_train_data
 
     print("\nplotting")
     plottingManager = PlottingManager(
@@ -180,9 +178,19 @@ def conv_ae():
         anomaly_split_len=len(original_test_data),
     )
 
+    plottingManager.plot_reconstructions(
+        "train",
+        original_train_data, train_reconstructions.reshape(1, -1, num_channels)[0],
+        loss=train_loss,
+        column_names=channel_names
+    )
+
     # flatten test_reconstructions
     plottingManager.plot_reconstructions(
-        original_test_data, test_reconstructions.reshape(1, -1, num_channels)[0], channel_names
+        "test",
+        original_test_data, test_reconstructions.reshape(1, -1, num_channels)[0],
+        loss=test_loss,
+        column_names=channel_names
     )
 
     plottingManager.plot_model_loss_val_loss(history)
