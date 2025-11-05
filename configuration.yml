@@ -17,3 +17,10 @@ model:
   activation: relu
   optimizer: adam
   loss: mae
+
+parameters:
+  GroupSystem:
+  System: RCP10
+  Subsystem: Pump
+  Component:
+  Sensor:

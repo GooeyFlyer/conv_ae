@@ -32,7 +32,7 @@ def set_draw_reconstructions(draw_reconstructions: str, num_columns: int) -> boo
 
 
 def write_anomalies(test_reconstructions: tf.Tensor, reshaped_test_data: np.ndarray, threshold: float,
-                      date_time_series: pd.Series, file_path: str = "anomaly_stats.txt") -> None:
+                    date_time_series: pd.Series, filter_message: str, file_path: str = "anomaly_stats.txt") -> None:
     """predicts anomalies and saves info to .txt file"""
 
     # 1 prediction per test_data datapoint
@@ -55,9 +55,11 @@ def write_anomalies(test_reconstructions: tf.Tensor, reshaped_test_data: np.ndar
     anomalies.iloc[:, 0] += 2
 
     pd.set_option("display.max_rows", None)
-    output = f"""stats:
+    output = f"""Anomalies
+{filter_message}
+stats:
 no. of anomalies in test_data: {len(anomaly_indices)}
-percentage of anomalies in test_data: {round(len(anomaly_indices)/len(predictions)*100, 1)}%
+percentage of anomalies in test_data: {round(len(anomaly_indices) / len(predictions) * 100, 1)}%
 \nTimestamps in test data marked as anomalies:
 {anomalies}
 """
@@ -80,7 +82,7 @@ def calculate_loss_and_threshold(train_reconstructions: tf.Tensor, test_reconstr
 
     # TODO: allow user to set this
     # choose threshold that is three standard deviations above the mean - contains 99% of data
-    threshold = float(np.mean(train_loss) + (3*np.std(train_loss)))  # this method is faster than np.quantile
+    threshold = float(np.mean(train_loss) + (3 * np.std(train_loss)))  # this method is faster than np.quantile
     print("calculated anomaly Threshold: ", threshold)
 
     test_loss = tf.reshape(
@@ -91,13 +93,15 @@ def calculate_loss_and_threshold(train_reconstructions: tf.Tensor, test_reconstr
     return train_loss, test_loss, threshold
 
 
-def anomaly_detection(data: pd.DataFrame, config_values: dict):
+def anomaly_detection(data: pd.DataFrame, config_values: dict, filter_message: str):
     """
     normalise data, split data, build model, train model, reconstruct test_data, plot graphs, find anomalies
     """
 
     raw_scaled_data, date_time_series, channel_names = process_data_scaling(data)
     num_channels = raw_scaled_data.shape[1]  # number of columns / features
+
+    print(num_channels, " parameters\n")
 
     original_train_data, original_test_data, reshaped_train_data, reshaped_test_data = data_operations(
         raw_scaled_data, config_values["input_neurons"], num_channels, config_values
@@ -157,7 +161,7 @@ def anomaly_detection(data: pd.DataFrame, config_values: dict):
         draw_plots=config_values["draw_plots"],  # decides if images are drawn
         draw_reconstructions=set_draw_reconstructions(config_values["draw_reconstructions"], num_channels),
         num_to_show=config_values["num_to_show"],
-        anomaly_split_len=len(original_test_data),
+        anomaly_split_len=len(original_test_data)
     )
 
     plottingManager.plot_reconstructions(
@@ -184,4 +188,4 @@ def anomaly_detection(data: pd.DataFrame, config_values: dict):
     plottingManager.plot_loss_line_chart(test_loss, threshold)
     plottingManager.plot_zoomed_loss_line_chart(test_loss, threshold)
 
-    write_anomalies(test_reconstructions, reshaped_test_data, threshold, date_time_series)
+    write_anomalies(test_reconstructions, reshaped_test_data, threshold, date_time_series, filter_message)
