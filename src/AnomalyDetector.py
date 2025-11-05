@@ -6,51 +6,48 @@ import numpy as np
 
 
 class AnomalyDetector(Model):
-    def __init__(self, steps_in_batch: int, num_columns: int):
+    def __init__(self, num_input_neurons: int, num_features: int,
+                 strides: int = 1, pool_size: int = 2, kernel_size: int = 3, activation: str = "relu"):
         super(AnomalyDetector, self).__init__()
-
-        strides = 1  # by how many datapoints the filter will move as it slides over input.
-        pool_size = 4
-        kernel_size = 7
-        activation = "relu"
 
         # down-samples and learns spatial features
         self.encoder = Sequential([
-            layers.Input((steps_in_batch, num_columns)),
+            layers.Input((num_input_neurons, num_features)),
 
             # convolve each window in input with each filter
             layers.Conv1D(
-                filters=num_columns, kernel_size=kernel_size, strides=strides, activation=activation, padding="same"
+                filters=num_features, kernel_size=kernel_size, strides=strides, activation=activation, padding="same"
             ),
 
             # reduces dimensionality of input by factor pool_size
             layers.MaxPool1D(pool_size=pool_size, padding="same"),
 
             layers.Conv1D(
-                filters=num_columns*2, kernel_size=kernel_size, strides=strides, activation=activation, padding="same"
+                filters=num_features*2, kernel_size=kernel_size, strides=strides, activation=activation, padding="same"
             ),
             layers.MaxPool1D(pool_size=pool_size, padding="same")
         ], name="encoder")
 
         # down-samples and learns spatial features
         self.decoder = Sequential([
-            layers.Input((steps_in_batch//(pool_size*pool_size) + steps_in_batch % (pool_size*pool_size), num_columns*2)),
+            layers.Input((num_input_neurons//(pool_size*pool_size) + num_input_neurons % (pool_size*pool_size),
+                          num_features*2)),
 
             # expands dimensionality of input by factor pool_size
             layers.UpSampling1D(size=pool_size),
 
             # reverse of convolution layer
             layers.Conv1DTranspose(
-                filters=num_columns*2, kernel_size=kernel_size, strides=strides, activation=activation, padding="same"
+                filters=num_features*2, kernel_size=kernel_size, strides=strides, activation=activation, padding="same"
             ),
 
             layers.UpSampling1D(size=pool_size),
             layers.Conv1DTranspose(
-                filters=num_columns, kernel_size=kernel_size, strides=strides, activation=activation, padding="same"
+                filters=num_features, kernel_size=kernel_size, strides=strides, activation=activation, padding="same"
             ),
 
             # squeezes values between 0 and 1
-            layers.Dense(units=num_columns, activation="sigmoid")
+            layers.Dense(units=num_features, activation="sigmoid")
         ], name="decoder")
 
     def call(self, x: np.ndarray) -> tf.Tensor:

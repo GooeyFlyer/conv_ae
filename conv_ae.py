@@ -101,8 +101,8 @@ def conv_ae():
     # normalise data
     raw_scaled_data, date_time_series, channel_names = process_data_scaling(config_values["train_file_path"])
 
-    steps_in_batch = 16  # no. of neurons
-    epochs = 200
+    steps_in_batch = config_values["input_neurons"]  # no. of neurons
+    epochs = config_values["epochs"]
 
     # splits raw_scaled_data depending on test_data_config
     # test_data_config can be str, int, or None. See README.md for more details
@@ -132,8 +132,15 @@ def conv_ae():
 
     # build model
     print("building model")
-    autoencoder = AnomalyDetector(steps_in_batch, num_channels)
-    autoencoder.compile(optimizer="adam", loss="mae", metrics=["accuracy"])
+    autoencoder = AnomalyDetector(
+        num_input_neurons=steps_in_batch,
+        num_features=num_channels,
+        strides=config_values["strides"],
+        pool_size=config_values["pool_size"],
+        kernel_size=config_values["kernel_size"],
+        activation=config_values["activation"]
+    )
+    autoencoder.compile(optimizer=config_values["optimizer"], loss=config_values["loss"], metrics=["accuracy"])
 
     if config_values["verbose_model"]:
         autoencoder.encoder.summary()
@@ -180,22 +187,22 @@ def conv_ae():
 
     plottingManager.plot_reconstructions(
         "train",
-        original_train_data, train_reconstructions.reshape(1, -1, num_channels)[0],
+        original_train_data,
+        train_reconstructions.reshape(1, -1, num_channels)[0],  # flatten array
         loss=train_loss,
         column_names=channel_names
     )
-
-    # flatten test_reconstructions
     plottingManager.plot_reconstructions(
         "test",
-        original_test_data, test_reconstructions.reshape(1, -1, num_channels)[0],
+        original_test_data,
+        test_reconstructions.reshape(1, -1, num_channels)[0],  # flatten array
         loss=test_loss,
         column_names=channel_names
     )
 
     plottingManager.plot_model_loss_val_loss(history)
 
-    del original_test_data, history
+    del original_train_data, original_test_data, train_reconstructions, history
 
     plottingManager.plot_loss_histograms(train_loss, test_loss, threshold)
 

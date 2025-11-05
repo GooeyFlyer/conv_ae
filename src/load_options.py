@@ -9,7 +9,13 @@ def load_yaml(file_name: str) -> dict:
     except FileNotFoundError:
         raise FileNotFoundError(f"Cannot find {file_name}")
 
-    return verify_yaml_values(data)
+    # combine different dictionaries from yaml file into 1 dictionary
+    combined_dict = {}
+    for key, value in data.items():
+        combined_dict.update(value)
+
+    print(combined_dict)
+    return verify_yaml_values(combined_dict)
 
 
 def expected_type_array_as_string(expected_type_array: list) -> str:
@@ -36,6 +42,14 @@ def verify_yaml_values(data: dict) -> dict:
         "draw_reconstructions": [str],
         "num_to_show": [int, type(None)],
         "verbose_model": [bool],
+        "strides": [int],
+        "pool_size": [int],
+        "kernel_size": [int],
+        "activation": [str],
+        "optimizer": [str],
+        "loss": [str],
+        "input_neurons": [int],
+        "epochs": [int],
     }
 
     for key, value in data.items():

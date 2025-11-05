@@ -1,6 +1,19 @@
-train_file_path: <insert_file_path>  # file_path of .csv file
-test_data_config:  <insert_option>  # empty, integer, or file_path of .csv file
-draw_plots: True  # decides if images are drawn
-draw_reconstructions: auto  # decides if reconstruction plots are drawn. auto draws if channels <= 20
-num_to_show: 1536  # datapoints from index 0 (inclusive) that are plotted
-verbose_model: False
+data:
+  train_file_path: <insert_file_path>  # file_path of .csv file
+  test_data_config: <insert_option> # empty, integer, or file_path of .csv file
+
+other:
+  draw_plots: True  # decides if images are drawn
+  draw_reconstructions: auto  # decides if reconstruction plots are drawn. "auto" draws if channels <= 20
+  num_to_show: # datapoints from index 0 (inclusive) that are plotted
+  verbose_model: False
+
+model:
+  input_neurons: 16
+  epochs: 200
+  strides: 1
+  pool_size: 4
+  kernel_size: 7
+  activation: relu
+  optimizer: adam
+  loss: mae
