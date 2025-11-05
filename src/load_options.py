@@ -14,7 +14,6 @@ def load_yaml(file_name: str) -> dict:
     for key, value in data.items():
         combined_dict.update(value)
 
-    print(combined_dict)
     return verify_yaml_values(combined_dict)
 
 
