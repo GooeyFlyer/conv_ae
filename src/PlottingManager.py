@@ -42,8 +42,8 @@ Limiting to {anomaly_split_len}""")
         """plot original data against reconstructed data"""
 
         if self.draw_plots and self.draw_reconstructions:
-            print("\nplotting original data against reconstructed data")
-            print(f"only first {self.num_to_show} datapoints")
+            print(f"\nplotting original {split_name} data against reconstructed data")
+            print(f"first {self.num_to_show} datapoints")
             for x in range(0, original_data.shape[1]):  # for every channel
                 fig, ax = plt.subplots(figsize=(10, 6))
                 ax.plot((original_data[:, x])[:self.num_to_show], label="original data", color="b")
@@ -71,13 +71,8 @@ Limiting to {anomaly_split_len}""")
                 ax.legend()
 
                 file_name = f"plot_{column_names[x]}.png"
-
-                if split_name == "test":
-                    full_path = os.path.join(self.test_reconstructions_path, file_name)
-                elif split_name == "train":
-                    full_path = os.path.join(self.train_reconstructions_path, file_name)
-                else:
-                    raise ValueError(f"""split_name must be "test" or "train", currently {split_name}""")
+                full_path = {"test": os.path.join(self.test_reconstructions_path, file_name),
+                             "train": os.path.join(self.train_reconstructions_path, file_name)}[split_name]
 
                 self.save_fig(fig, full_path, verbose=False)
 

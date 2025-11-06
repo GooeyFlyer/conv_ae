@@ -5,6 +5,11 @@ import numpy as np
 
 class LossThresholdCalculator:
     def __init__(self, loss: str, threshold_quantile: float):
+        """
+        Parameters:
+            loss (str): choice of loss function. See README for details
+            threshold_quantile (float): quantile decimal between 0 and 1, for threshold will be set at
+        """
 
         # you can add your own functions here, ensure they conform to f(y_pred, y_true)
         loss_function_dict = {
@@ -30,11 +35,20 @@ class LossThresholdCalculator:
         else:
             raise ValueError(f"threshold_quantile ({threshold_quantile}) must be in the range [0, 1]")
 
-    def __call__(self, train_reconstructions, test_reconstructions, reshaped_train_data, reshaped_test_data,
-                 *args, **kwargs):
+    def __call__(self, train_reconstructions: tf.Tensor, test_reconstructions: tf.Tensor,
+                 reshaped_train_data: tf.Tensor, reshaped_test_data: tf.Tensor,
+                 *args, **kwargs) -> tuple[tf.Tensor, tf.Tensor, float]:
         """
         returns loss arrays with values between 0 and 1.
-        use keras loss functions to avoid this
+        Parameters:
+            train_reconstructions (tf.Tensor): reconstructed data from autoencoder
+            test_reconstructions (tf.Tensor):
+            reshaped_train_data (tf.Tensor): original data, reshaped to batch_size, num_in_batch, channels
+            reshaped_test_data (tf.Tensor):
+        Returns:
+            train_loss (tf.Tensor): loss for train data
+            test_loss (tf.Tensor): loss for test data (anomaly detection split)
+            threshold (float): the threshold calculated from train_loss, used for anomaly labelling
         """
 
         print("\ncalculating test loss, threshold, & train loss")
@@ -57,7 +71,7 @@ class LossThresholdCalculator:
 
         # modify the result of keras loss functions to fit with PlottingManager
 
-    def mean_absolute_percentage_error(self, y_true, y_pred):
+    def mean_absolute_percentage_error(self, y_true: tf.Tensor, y_pred: tf.Tensor):
         """scales result of keras mape to between 0 and 1"""
         loss = keras.losses.mean_absolute_percentage_error(y_true, y_pred)
 
@@ -67,7 +81,7 @@ class LossThresholdCalculator:
         scalar = MinMaxScaler(feature_range=(0, 1))
         return scalar.fit_transform(loss.numpy())
 
-    def cosine_similarity(self, y_true, y_pred):
+    def cosine_similarity(self, y_true: tf.Tensor, y_pred: tf.Tensor):
         """adds 1 to result of keras cosine_similarity"""
         loss = keras.losses.cosine_similarity(y_true, y_pred)
         return loss + 1

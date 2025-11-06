@@ -78,7 +78,7 @@ def anomaly_detection(data: pd.DataFrame, config_values: dict, filter_message: s
     raw_scaled_data, date_time_series, channel_names = process_data_scaling(data)
     num_channels = raw_scaled_data.shape[1]  # number of columns / features
 
-    print(num_channels, " parameters\n")
+    print("modelling on", num_channels, "parameters\n")
 
     original_train_data, original_test_data, reshaped_train_data, reshaped_test_data = data_operations(
         raw_scaled_data, config_values["input_neurons"], num_channels, config_values

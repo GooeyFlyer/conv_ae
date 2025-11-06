@@ -5,7 +5,7 @@ import pandas as pd
 
 
 def main():
-    config_values = load_yaml("configuration.yml")  # ENV
+    config_values = load_yaml("configuration.yml")  # ENV values
     data = pd.read_csv(config_values["train_file_path"], sep=";")
 
     data, message = parameter_filtering(data, config_values)

@@ -37,10 +37,12 @@ def pretty_column(setting: str | None) -> str:
 
 
 def parameter_filtering(data: pd.DataFrame, config_values: dict) -> tuple[pd.DataFrame, str]:
-    """find the parameters the user wants
+    """
+    select parameters where settings match user configurations
     Returns:
-        filtered dataframe
-        pretty message for what settings the user chose, and what parameters that gives"""
+        filtered dataframe (pandas.DataFrame):
+        message (str): pretty message of settings, and what parameters that gives
+    """
 
     lookup_file_name = "parameter_lookup.csv"
 
@@ -74,7 +76,7 @@ filtered to: {pretty_columns}
 included parameters: {" ".join(filtered_parameters)}
 """
 
-    filtered_parameters.insert(0, "Date_Time")
+    filtered_parameters.insert(0, "Date_Time")  # include Date_Time column
 
     return data[filtered_parameters], message  # return only columns in filtered_parameters
 
