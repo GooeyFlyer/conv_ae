@@ -4,6 +4,8 @@ import numpy as np
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import MinMaxScaler
 
+from src.parameter_filtering import parameter_filtering
+
 
 def process_data_scaling(data: pd.DataFrame):
     """
@@ -61,8 +63,10 @@ def format_data(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
-def split_by_test_data_config(test_data_config, raw_scaled_data) -> tuple[np.ndarray, np.ndarray]:
+def split_by_test_data_config(config_values: dict, raw_scaled_data) -> tuple[np.ndarray, np.ndarray]:
     """returns a split of raw_scaled_data, depending on test_data_config type"""
+
+    test_data_config = config_values["test_data_config"]
 
     print("data split into train_data (for model training) & test_data (for anomaly detection)")
 
@@ -91,7 +95,8 @@ def split_by_test_data_config(test_data_config, raw_scaled_data) -> tuple[np.nda
 
         test_file_path = test_data_config
         original_train_data = raw_scaled_data
-        original_test_data, _, _ = process_data_scaling(test_file_path)
+        original_test_data, _, _ = process_data_scaling(parameter_filtering(pd.read_csv(test_file_path, sep=";"),
+                                                                            config_values)[0])
 
         if original_train_data.shape[1] != original_test_data.shape[1]:
             raise ValueError("train data and anomaly detection data must have the same number of channels")
@@ -121,8 +126,8 @@ def data_operations(raw_scaled_data: np.ndarray, input_neurons: int, num_channel
 
     # splits raw_scaled_data depending on test_data_config
     # test_data_config can be str, int, or None. See README.md for more details
-    original_train_data, original_test_data = split_by_test_data_config(config_values["test_data_config"],
-                                                                        raw_scaled_data)
+    original_train_data, original_test_data = split_by_test_data_config(config_values, raw_scaled_data)
+
     train_len = original_train_data.shape[0]
     test_len = original_test_data.shape[0]
 
