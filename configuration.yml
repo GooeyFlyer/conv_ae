@@ -20,7 +20,7 @@ model:
   loss: mae
 
 parameters:
-  GroupSystem:
+  GroupSystem:  # allows filtering of parameters, leave empty to search All
   System: RCP10
   Subsystem: Pump
   Component:

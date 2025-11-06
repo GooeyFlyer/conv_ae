@@ -4,10 +4,10 @@ import os
 from src.load_options import load_yaml
 
 
-def row_boolean(column_name: str, parameter_column: pd.Series, column_choice: str):
+def row_boolean(parameter_column: pd.Series, column_choice: str):
     """
-    returns True for all if column is None,
-    or returns boolean for each item in parameter_lookup column that matches config setting
+    returns True for all if column_choice is None,
+    or returns boolean for each item in parameter_lookup column that matches column_choice
     """
     if column_choice is None:
         return [True] * len(parameter_column)
@@ -23,7 +23,7 @@ def boolean_all_columns(column_names_array: list[str], parameter_lookup: pd.Data
     for column_name in column_names_array:
         # pair up total and row_boolean result, then apply a and b for each pair
         total = [a and b for a, b in zip(
-            total, row_boolean(column_name, parameter_lookup[column_name], config_values[column_name])
+            total, row_boolean(parameter_lookup[column_name], config_values[column_name])
         )]
 
     return total
@@ -36,13 +36,19 @@ def pretty_column(setting: str | None) -> str:
     return setting
 
 
-def parameter_filtering(data: pd.DataFrame, config_values: dict):
+def parameter_filtering(data: pd.DataFrame, config_values: dict) -> tuple[pd.DataFrame, str]:
     """find the parameters the user wants
     Returns:
         filtered dataframe
         pretty message for what settings the user chose, and what parameters that gives"""
 
-    parameter_lookup = pd.read_csv("parameter_lookup.csv")
+    lookup_file_name = "parameter_lookup.csv"
+
+    if not(os.path.exists(lookup_file_name)):
+        print(f"WARNING: {lookup_file_name} not found, modelling all parameters")
+        return data, ""
+
+    parameter_lookup = pd.read_csv(lookup_file_name)
 
     # set(parameter_lookup[column_name].values)
 
