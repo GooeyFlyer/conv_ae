@@ -169,7 +169,7 @@ if __name__ == "__main__":
     print("extend_data return shape: ", extend_data(a, 12).shape)
     print("")
 
-    oa, ob = split_by_test_data_config(test_data_config=1200, raw_scaled_data=a)
+    oa, ob = split_by_test_data_config(c, raw_scaled_data=a)
 
     print("\nextended split shapes:")
     print("oa.shape: ", extend_data(oa, 12).shape)

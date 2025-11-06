@@ -18,17 +18,18 @@ def loss_below_threshold(calculator: LossThresholdCalculator, test_reconstructio
 
 
 def set_draw_reconstructions(draw_reconstructions: str, num_columns: int) -> bool:
-    if draw_reconstructions == "yes":
-        return True
-    elif draw_reconstructions == "no":
+    """
+    returns boolean for if reconstructions should be drawn, depending on draw_reconstructions:
+    'yes', 'no', or 'auto'
+    'auto' draws if num_columns <= 20
+    """
+    try:
+        return {"yes": True,
+                "no": False,
+                "auto": num_columns <= 20}[draw_reconstructions]
+    except KeyError:
+        print(f"draw_reconstructions is invalid value {draw_reconstructions}.\nDefaulting to False")
         return False
-    elif draw_reconstructions == "auto":
-        if num_columns <= 20:
-            return True
-        return False
-
-    print(f"draw_reconstructions is invalid value {draw_reconstructions}.\nDefaulting to False")
-    return False
 
 
 def write_anomalies(calculator: LossThresholdCalculator, test_reconstructions: tf.Tensor, reshaped_test_data: np.ndarray,

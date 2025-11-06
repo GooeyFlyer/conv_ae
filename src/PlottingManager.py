@@ -46,13 +46,16 @@ Limiting to {anomaly_split_len}""")
             print(f"first {self.num_to_show} datapoints")
             for x in range(0, original_data.shape[1]):  # for every channel
                 fig, ax = plt.subplots(figsize=(10, 6))
-                ax.plot((original_data[:, x])[:self.num_to_show], label="original data", color="b")
                 ax.plot((reconstructed_data[:, x])[:self.num_to_show], label="reconstructed", color="r")
-                ax.plot(loss[:self.num_to_show], label="loss", color="g")
+                ax.plot((original_data[:, x])[:self.num_to_show], label=f"original", color="b")
+                ax.plot(loss[:self.num_to_show], label=f"{split_name} loss", color="g")
 
                 if self.error_plot == "floor":
                     diff = abs(original_data[:, x] - reconstructed_data[:, x])
-                    ax.plot(diff[:self.num_to_show], label="error", color="lightcoral")
+                    ax.plot(
+                        diff[:self.num_to_show], label="error", color="lightcoral"
+                    )
+
                 elif self.error_plot == "between":
                     ax.fill_between(
                         np.arange(len((original_data[:, x])[:self.num_to_show])),
@@ -60,8 +63,9 @@ Limiting to {anomaly_split_len}""")
                         (reconstructed_data[:, x])[:self.num_to_show],
                         label="error", color="lightcoral"
                     )
+
                 else:
-                    raise ValueError("error_plot for PlottingManager not 'between' or 'floor'")
+                    print("WARNING: error_plot not 'between' or 'floor'. Skipping error drawing")
 
                 # ax.set_xticklabels(date_time_series)
                 ax.set_ylim(0, 1)
@@ -130,7 +134,7 @@ Limiting to {anomaly_split_len}""")
         ax.set_ylabel("Frequency")
         ax.legend()
 
-    def plot_loss_line_chart(self, title: str, test_loss: tf.Tensor, threshold: float):
+    def plot_loss_line_chart(self, title: str, loss: tf.Tensor, threshold: float):
         """
         plot of loss value for each test_data, with line for anomaly threshold
         parameter zoomed only changes title and file name
@@ -139,7 +143,7 @@ Limiting to {anomaly_split_len}""")
         if self.draw_plots:
             fig, ax = plt.subplots(figsize=(10, 6))
 
-            self.draw_loss_line(ax, test_loss[:self.num_to_show], threshold, title)
+            self.draw_loss_line(ax, loss[:self.num_to_show], threshold, title)
 
             ax.set_ylim(0)
             ax.set_title(f"""reconstruction loss in {title}_data""")
