@@ -8,7 +8,8 @@ from src.AnomalyDetector import AnomalyDetector
 from src.LossThresholdCalculator import LossThresholdCalculator
 
 
-def loss_below_threshold(calculator: LossThresholdCalculator, test_reconstructions: tf.Tensor, test_data: np.ndarray, threshold: float) -> tf.Tensor:
+def loss_below_threshold(calculator: LossThresholdCalculator, test_reconstructions: tf.Tensor, test_data: np.ndarray,
+                         threshold: float) -> tf.Tensor:
     """
     Returns:
         tensorflow array, of boolean if datapoint loss < threshold, for each datapoint (a.k.a timestamp) in test_data
@@ -32,8 +33,8 @@ def set_draw_reconstructions(draw_reconstructions: str, num_columns: int) -> boo
         return False
 
 
-def write_anomalies(calculator: LossThresholdCalculator, test_reconstructions: tf.Tensor, reshaped_test_data: np.ndarray,
-                    threshold: float, date_time_series: pd.Series,
+def write_anomalies(calculator: LossThresholdCalculator, test_reconstructions: tf.Tensor,
+                    reshaped_test_data: np.ndarray, threshold: float, date_time_series: pd.Series,
                     filter_message: str, file_path: str = "anomaly_stats.txt") -> None:
     """predicts anomalies and saves info to .txt file"""
 
@@ -77,7 +78,7 @@ def anomaly_detection(data: pd.DataFrame, config_values: dict, filter_message: s
     """
 
     raw_scaled_data, date_time_series, channel_names = process_data_scaling(data)
-    num_channels = raw_scaled_data.shape[1]  # number of columns / features
+    num_channels = raw_scaled_data.shape[1]  # number of columns a.k.a. features a.k.a. parameters
 
     print("modelling on", num_channels, "parameters\n")
 

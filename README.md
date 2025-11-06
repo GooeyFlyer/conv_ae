@@ -33,7 +33,7 @@ on data up to and including the line, and detect anomalies on data after the lin
 **Note:** if a split does not fit the input shape of the model, the final datapoint
 will be extended until it does.
 
-## Run the program
+### Run the program
 
 Change any other settings in _configuration.yml_ 
 

@@ -26,7 +26,7 @@ class LossThresholdCalculator:
             self.calculate_loss = loss_function_dict[loss]
             self.loss = loss
 
-        except KeyError as e:
+        except KeyError:
             raise KeyError(f"loss ({loss}) not found. Supported options are {loss_function_dict.keys()}")
 
         if 0 <= threshold_quantile <= 1:
