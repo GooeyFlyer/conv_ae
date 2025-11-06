@@ -1,4 +1,3 @@
-import keras
 import numpy as np
 import tensorflow as tf
 import pandas as pd
@@ -9,12 +8,12 @@ from src.AnomalyDetector import AnomalyDetector
 from src.LossThresholdCalculator import LossThresholdCalculator
 
 
-def loss_below_threshold(test_reconstructions: tf.Tensor, test_data: np.ndarray, threshold: float) -> tf.Tensor:
+def loss_below_threshold(calculator: LossThresholdCalculator, test_reconstructions: tf.Tensor, test_data: np.ndarray, threshold: float) -> tf.Tensor:
     """
     Returns:
         tensorflow array, of boolean if datapoint loss < threshold, for each datapoint (a.k.a timestamp) in test_data
     """
-    loss = keras.losses.mean_absolute_error(y_pred=test_reconstructions, y_true=test_data)
+    loss = calculator.calculate_loss(y_pred=test_reconstructions, y_true=test_data)
     return tf.math.less(loss, threshold)
 
 
@@ -32,12 +31,13 @@ def set_draw_reconstructions(draw_reconstructions: str, num_columns: int) -> boo
     return False
 
 
-def write_anomalies(test_reconstructions: tf.Tensor, reshaped_test_data: np.ndarray, threshold: float,
-                    date_time_series: pd.Series, filter_message: str, file_path: str = "anomaly_stats.txt") -> None:
+def write_anomalies(calculator: LossThresholdCalculator, test_reconstructions: tf.Tensor, reshaped_test_data: np.ndarray,
+                    threshold: float, date_time_series: pd.Series,
+                    filter_message: str, file_path: str = "anomaly_stats.txt") -> None:
     """predicts anomalies and saves info to .txt file"""
 
     # 1 prediction per test_data datapoint
-    predictions = loss_below_threshold(test_reconstructions, reshaped_test_data, threshold)
+    predictions = loss_below_threshold(calculator, test_reconstructions, reshaped_test_data, threshold)
     predictions = tf.reshape(predictions, [-1])  # flatten tensor
     print("\npredictions info: ", tf.size(predictions))
 
@@ -128,11 +128,8 @@ def anomaly_detection(data: pd.DataFrame, config_values: dict, filter_message: s
     )  # tf.Tensor
 
     print("\ncalculating stats of all datapoints")
-    train_loss, test_loss, threshold = calc(
-        train_reconstructions,
-        test_reconstructions,
-        reshaped_train_data, reshaped_test_data
-    )
+    train_loss, test_loss, threshold = calc(train_reconstructions, test_reconstructions,
+                                            reshaped_train_data, reshaped_test_data)
 
     del reshaped_train_data
 
@@ -172,4 +169,4 @@ def anomaly_detection(data: pd.DataFrame, config_values: dict, filter_message: s
     # plottingManager.plot_zoomed_loss_line_chart("train", train_loss, threshold)
     # plottingManager.plot_zoomed_loss_line_chart("test", test_loss, threshold)
 
-    write_anomalies(test_reconstructions, reshaped_test_data, threshold, date_time_series, filter_message)
+    write_anomalies(calc, test_reconstructions, reshaped_test_data, threshold, date_time_series, filter_message)
