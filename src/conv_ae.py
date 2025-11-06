@@ -186,7 +186,10 @@ def anomaly_detection(data: pd.DataFrame, config_values: dict, filter_message: s
 
     plottingManager.plot_loss_histograms(train_loss, test_loss, threshold)
 
-    plottingManager.plot_loss_line_chart(test_loss, threshold)
-    plottingManager.plot_zoomed_loss_line_chart(test_loss, threshold)
+    plottingManager.plot_loss_line_chart("test", test_loss, threshold)
+    plottingManager.plot_loss_line_chart("train", train_loss, threshold)
+
+    # plottingManager.plot_zoomed_loss_line_chart("train", train_loss, threshold)
+    # plottingManager.plot_zoomed_loss_line_chart("test", test_loss, threshold)
 
     write_anomalies(test_reconstructions, reshaped_test_data, threshold, date_time_series, filter_message)
