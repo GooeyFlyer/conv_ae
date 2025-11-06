@@ -17,10 +17,12 @@ model:
   kernel_size: 7
   activation: relu
   optimizer: adam
-  loss: mae
+  loss: mean_absolute_error  # mean_absolute_error, mean_squared_error, mean_squared_logarithmic_error, huber, log_cosh
+  threshold_quantile: 0.99  # 0 to 1
 
 parameters:
-  GroupSystem:  # allows filtering of parameters, leave empty to search All
+  # allows filtering of parameters, leave empty to search All
+  GroupSystem:
   System: RCP10
   Subsystem: Pump
   Component:

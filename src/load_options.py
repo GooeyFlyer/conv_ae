@@ -48,6 +48,7 @@ def verify_yaml_values(data: dict) -> dict:
         "activation": [str],
         "optimizer": [str],
         "loss": [str],
+        "threshold_quantile": [float],
         "input_neurons": [int],
         "epochs": [int],
         "GroupSystem": [str, type(None)],
@@ -89,6 +90,10 @@ def verify_yaml_values(data: dict) -> dict:
             if isinstance(value, int):
                 if value <= 2:
                     raise ValueError(key + " in configuration.yml must at least 3")
+
+        elif key == "threshold_quantile":
+            if 0 <= value <= 1:
+                ValueError(key + " in configuration.yml must be in the range [0, 1]")
 
     return data
 

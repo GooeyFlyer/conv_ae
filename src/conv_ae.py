@@ -6,6 +6,7 @@ import pandas as pd
 from src.get_data import process_data_scaling, data_operations
 from src.PlottingManager import PlottingManager
 from src.AnomalyDetector import AnomalyDetector
+from src.LossThresholdCalculator import LossThresholdCalculator
 
 
 def loss_below_threshold(test_reconstructions: tf.Tensor, test_data: np.ndarray, threshold: float) -> tf.Tensor:
@@ -69,30 +70,6 @@ percentage of anomalies in test_data: {round(len(anomaly_indices) / len(predicti
     print("\nstats saved to anomaly_stats.txt")
 
 
-def calculate_loss_and_threshold(train_reconstructions: tf.Tensor, test_reconstructions: tf.Tensor,
-                                 reshaped_train_data: np.ndarray, reshaped_test_data: np.ndarray):
-    """threshold is calculated from reshaped_train_data"""
-
-    print("\ncalculating test loss, threshold, & train loss")
-
-    train_loss = tf.reshape(
-        keras.losses.mean_absolute_error(y_pred=train_reconstructions, y_true=reshaped_train_data),
-        shape=[-1]
-    )
-
-    # TODO: allow user to set this
-    # choose threshold that is three standard deviations above the mean - contains 99% of data
-    threshold = float(np.mean(train_loss) + (3 * np.std(train_loss)))  # this method is faster than np.quantile
-    print("calculated anomaly Threshold: ", threshold)
-
-    test_loss = tf.reshape(
-        keras.losses.mean_absolute_error(y_pred=test_reconstructions, y_true=reshaped_test_data),
-        shape=[-1]
-    )
-
-    return train_loss, test_loss, threshold
-
-
 def anomaly_detection(data: pd.DataFrame, config_values: dict, filter_message: str):
     """
     normalise data, split data, build model, train model, reconstruct test_data, plot graphs, find anomalies
@@ -108,6 +85,9 @@ def anomaly_detection(data: pd.DataFrame, config_values: dict, filter_message: s
     )
 
     verbose = {True: "auto", False: 0}[config_values["verbose_model"]]
+
+    # LossThresholdCalculator initialised here, as it contains error checking for config_values["threshold_quantile"]
+    calc = LossThresholdCalculator(config_values["loss"], config_values["threshold_quantile"])
 
     # build model
     print("building model")
@@ -148,7 +128,7 @@ def anomaly_detection(data: pd.DataFrame, config_values: dict, filter_message: s
     )  # tf.Tensor
 
     print("\ncalculating stats of all datapoints")
-    train_loss, test_loss, threshold = calculate_loss_and_threshold(
+    train_loss, test_loss, threshold = calc(
         train_reconstructions,
         test_reconstructions,
         reshaped_train_data, reshaped_test_data
