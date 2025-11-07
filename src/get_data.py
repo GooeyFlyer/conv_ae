@@ -103,6 +103,9 @@ def split_by_test_data_config(config_values: dict, raw_scaled_data) -> tuple[np.
     else:
         raise ValueError("test_data_config not of type int, None, or str")
 
+    if (len(original_train_data) == 0) or (len(original_test_data) == 0):
+        raise Exception(f"One split is empty. train: {original_train_data.shape}. test: {original_test_data.shape}")
+
     return original_train_data, original_test_data
 
 
