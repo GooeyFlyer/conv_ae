@@ -4,8 +4,6 @@ import numpy as np
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import MinMaxScaler
 
-from src.parameter_filtering import parameter_filtering
-
 
 def process_data_scaling(data: pd.DataFrame):
     """
@@ -95,8 +93,7 @@ def split_by_test_data_config(config_values: dict, raw_scaled_data) -> tuple[np.
 
         test_file_path = test_data_config
         original_train_data = raw_scaled_data
-        original_test_data, _, _ = process_data_scaling(parameter_filtering(pd.read_csv(test_file_path, sep=";"),
-                                                                            config_values)[0])
+        original_test_data, _, _ = process_data_scaling(pd.read_csv(test_file_path, sep=";"))
 
         if original_train_data.shape[1] != original_test_data.shape[1]:
             raise ValueError("train data and anomaly detection data must have the same number of channels")
