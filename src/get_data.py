@@ -58,13 +58,15 @@ def format_data(data: pd.DataFrame) -> pd.DataFrame:
         data[col] = pd.to_numeric(data[col].astype(str).str.replace(",", "."))  # replace , with . then convert to np
         data.loc[m_neg, col] += -1
 
-    print("dataframe shape: ", data.shape)
-
     return data
 
 
-def split_by_test_data_config(test_data_config, raw_scaled_data) -> tuple[np.ndarray, np.ndarray]:
+def split_by_test_data_config(config_values: dict, raw_scaled_data) -> tuple[np.ndarray, np.ndarray]:
     """returns a split of raw_scaled_data, depending on test_data_config type"""
+
+    test_data_config = config_values["test_data_config"]
+
+    print("data split into train_data (for model training) & test_data (for anomaly detection)")
 
     if isinstance(test_data_config, int):
 
@@ -79,10 +81,7 @@ def split_by_test_data_config(test_data_config, raw_scaled_data) -> tuple[np.nda
         # split data
         original_train_data = raw_scaled_data[:train_length]
         original_test_data = raw_scaled_data[train_length:]
-        print(
-            "data split into train & anomaly detection data,",
-            f"at file line {test_data_config} , df index {train_length}"
-        )
+        print(f"anomaly detection data at file line {test_data_config} , df index {train_length}")
 
     elif isinstance(test_data_config, type(None)):
 
@@ -94,7 +93,7 @@ def split_by_test_data_config(test_data_config, raw_scaled_data) -> tuple[np.nda
 
         test_file_path = test_data_config
         original_train_data = raw_scaled_data
-        original_test_data, _, _ = process_data_scaling(test_file_path)
+        original_test_data, _, _ = process_data_scaling(pd.read_csv(test_file_path, sep=";"))
 
         if original_train_data.shape[1] != original_test_data.shape[1]:
             raise ValueError("train data and anomaly detection data must have the same number of channels")
@@ -124,22 +123,22 @@ def data_operations(raw_scaled_data: np.ndarray, input_neurons: int, num_channel
 
     # splits raw_scaled_data depending on test_data_config
     # test_data_config can be str, int, or None. See README.md for more details
-    original_train_data, original_test_data = split_by_test_data_config(config_values["test_data_config"],
-                                                                        raw_scaled_data)
+    original_train_data, original_test_data = split_by_test_data_config(config_values, raw_scaled_data)
+
     train_len = original_train_data.shape[0]
     test_len = original_test_data.shape[0]
 
     del raw_scaled_data
 
-    print("extending data")
+    print("\nextending data")
     original_train_data = extend_data(original_train_data, input_neurons)
     original_test_data = extend_data(original_test_data, input_neurons)
 
     print(f"train_data extended by {original_train_data.shape[0] - train_len} datapoints")
     print(f"test_data extended by {original_test_data.shape[0] - test_len} datapoints")
 
-    print("\ntrain_data.shape: ", original_train_data.shape)
-    print("test_data.shape: ", original_test_data.shape)
+    print(f"\ntrain_data shape: {original_train_data.shape[0]} datapoints {original_train_data.shape[1]} parameters")
+    print(f"\ntest_data shape: {original_test_data.shape[0]} datapoints {original_test_data.shape[1]} parameters")
 
     # batch shape, steps_in_batch, num features
     reshaped_train_data = original_train_data.reshape((-1, input_neurons, num_channels))
@@ -167,7 +166,7 @@ if __name__ == "__main__":
     print("extend_data return shape: ", extend_data(a, 12).shape)
     print("")
 
-    oa, ob = split_by_test_data_config(test_data_config=1200, raw_scaled_data=a)
+    oa, ob = split_by_test_data_config(c, raw_scaled_data=a)
 
     print("\nextended split shapes:")
     print("oa.shape: ", extend_data(oa, 12).shape)

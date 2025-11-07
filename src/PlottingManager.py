@@ -6,7 +6,8 @@ import os
 
 
 class PlottingManager:
-    def __init__(self, draw_plots: bool, num_to_show: int, draw_reconstructions: bool, anomaly_split_len: int):
+    def __init__(self, draw_plots: bool, num_to_show: int, draw_reconstructions: bool, error_plot: str,
+                 anomaly_split_len: int):
         """
         Parameters:
             draw_plots (bool): decides if images are drawn
@@ -19,6 +20,7 @@ class PlottingManager:
         self.test_reconstructions_path = "images/plots/test_reconstructions"
         self.stats_path = "images/stats"
         self.draw_reconstructions = draw_reconstructions
+        self.error_plot = error_plot
 
         if num_to_show is None:
             self.num_to_show = anomaly_split_len
@@ -35,20 +37,35 @@ Limiting to {anomaly_split_len}""")
             for x in [self.train_reconstructions_path, self.test_reconstructions_path, self.stats_path]:
                 self.clear_images_folder(x)
 
-    def plot_reconstructions(self, split_name: str, original_data: np.ndarray, reconstructed_data: np.ndarray, loss, column_names):
+    def plot_reconstructions(self, split_name: str, original_data: np.ndarray, reconstructed_data: np.ndarray, loss,
+                             column_names):
         """plot original data against reconstructed data"""
 
         if self.draw_plots and self.draw_reconstructions:
-            print("\nplotting original data against reconstructed data")
-            print(f"only first {self.num_to_show} datapoints")
+            print(f"\nplotting original {split_name} data against reconstructed data")
+            print(f"first {self.num_to_show} datapoints")
             for x in range(0, original_data.shape[1]):  # for every channel
                 fig, ax = plt.subplots(figsize=(10, 6))
-                ax.plot((original_data[:, x])[:self.num_to_show], label="original data", color="b")
-                ax.plot((reconstructed_data[:, x])[:self.num_to_show], label="reconstructed", color="lightcoral")
-                ax.plot(loss[:self.num_to_show], label="loss", color="g")
+                ax.plot((reconstructed_data[:, x])[:self.num_to_show], label="reconstructed", color="r")
+                ax.plot((original_data[:, x])[:self.num_to_show], label=f"original", color="b")
+                ax.plot(loss[:self.num_to_show], label=f"{split_name} loss", color="g")
 
-                diff = abs(original_data[:, x] - reconstructed_data[:, x])
-                ax.plot(diff[:self.num_to_show], label="error", color="r")
+                if self.error_plot == "floor":
+                    diff = abs(original_data[:, x] - reconstructed_data[:, x])
+                    ax.plot(
+                        diff[:self.num_to_show], label="error", color="lightcoral"
+                    )
+
+                elif self.error_plot == "between":
+                    ax.fill_between(
+                        np.arange(len((original_data[:, x])[:self.num_to_show])),
+                        (original_data[:, x])[:self.num_to_show],
+                        (reconstructed_data[:, x])[:self.num_to_show],
+                        label="error", color="lightcoral"
+                    )
+
+                else:
+                    print("WARNING: error_plot not 'between' or 'floor'. Skipping error drawing")
 
                 # ax.set_xticklabels(date_time_series)
                 ax.set_ylim(0, 1)
@@ -58,13 +75,8 @@ Limiting to {anomaly_split_len}""")
                 ax.legend()
 
                 file_name = f"plot_{column_names[x]}.png"
-
-                if split_name == "test":
-                    full_path = os.path.join(self.test_reconstructions_path, file_name)
-                elif split_name == "train":
-                    full_path = os.path.join(self.train_reconstructions_path, file_name)
-                else:
-                    raise ValueError(f"""split_name must be "test" or "train", currently {split_name}""")
+                full_path = {"test": os.path.join(self.test_reconstructions_path, file_name),
+                             "train": os.path.join(self.train_reconstructions_path, file_name)}[split_name]
 
                 self.save_fig(fig, full_path, verbose=False)
 
@@ -122,7 +134,7 @@ Limiting to {anomaly_split_len}""")
         ax.set_ylabel("Frequency")
         ax.legend()
 
-    def plot_loss_line_chart(self, test_loss: tf.Tensor, threshold: float):
+    def plot_loss_line_chart(self, title: str, loss: tf.Tensor, threshold: float):
         """
         plot of loss value for each test_data, with line for anomaly threshold
         parameter zoomed only changes title and file name
@@ -131,14 +143,14 @@ Limiting to {anomaly_split_len}""")
         if self.draw_plots:
             fig, ax = plt.subplots(figsize=(10, 6))
 
-            self.draw_loss_line(ax, test_loss[:self.num_to_show], threshold)
+            self.draw_loss_line(ax, loss[:self.num_to_show], threshold, title)
 
             ax.set_ylim(0)
-            ax.set_title(f"""reconstruction loss in test_data""")
+            ax.set_title(f"""reconstruction loss in {title}_data""")
 
-            self.save_fig(fig, os.path.join(self.stats_path, f"Test_Loss.png"))
+            self.save_fig(fig, os.path.join(self.stats_path, f"{title}_Loss.png"))
 
-    def plot_zoomed_loss_line_chart(self, test_loss: tf.Tensor, threshold: float):
+    def plot_zoomed_loss_line_chart(self, title: str, test_loss: tf.Tensor, threshold: float):
         """
         plot of loss value for test_data, zoomed into the largest loss, with line for anomaly threshold
         """
@@ -147,23 +159,22 @@ Limiting to {anomaly_split_len}""")
             fig, ax = plt.subplots(figsize=(10, 6))
 
             y = test_loss[:self.num_to_show]
-            self.draw_loss_line(ax, y, threshold)
+            self.draw_loss_line(ax, y, threshold, title)
 
-            max_loss = np.max(test_loss[:self.num_to_show])
             max_x = range(len(y))[np.argmax(y)]  # x value of max_loss
 
             # padding of 50 indexes around max_x
             # max(max_x-50, 0) so the lowest index is not negative
-            ax.set_xlim(max(max_x-50, 0), max_x+50)
+            ax.set_xlim(max(max_x - 50, 0), max_x + 50)
             ax.set_ylim(0)
-            ax.set_title(f"""reconstruction loss in test_data, zoomed to highest loss""")
+            ax.set_title(f"""reconstruction loss in {title}_data, zoomed to highest loss""")
 
-            self.save_fig(fig, os.path.join(self.stats_path, f"Test_Loss_Zoomed.png"))
+            self.save_fig(fig, os.path.join(self.stats_path, f"{title}_Loss_Zoomed.png"))
 
-    def draw_loss_line(self, ax: plt.Axes, y: tf.Tensor, threshold: float):
+    def draw_loss_line(self, ax: plt.Axes, y: tf.Tensor, threshold: float, title: str):
         """draws line chart with set styling"""
 
-        ax.plot(range(len(y)), y, label=f"test loss")
+        ax.plot(range(len(y)), y, label=f"{title} loss")
         ax.axhline(y=threshold, color="r", label="anomaly threshold")
 
         ax.set_xlabel("Timestamp")

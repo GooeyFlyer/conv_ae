@@ -14,7 +14,6 @@ def load_yaml(file_name: str) -> dict:
     for key, value in data.items():
         combined_dict.update(value)
 
-    print(combined_dict)
     return verify_yaml_values(combined_dict)
 
 
@@ -40,6 +39,7 @@ def verify_yaml_values(data: dict) -> dict:
         "test_data_config": [str, type(None), int],
         "draw_plots": [bool],
         "draw_reconstructions": [str],
+        "error_plot": [str],
         "num_to_show": [int, type(None)],
         "verbose_model": [bool],
         "strides": [int],
@@ -48,6 +48,7 @@ def verify_yaml_values(data: dict) -> dict:
         "activation": [str],
         "optimizer": [str],
         "loss": [str],
+        "threshold_quantile": [float],
         "input_neurons": [int],
         "epochs": [int],
     }
@@ -76,10 +77,18 @@ def verify_yaml_values(data: dict) -> dict:
             if value not in ["yes", "no", "auto"]:
                 raise ValueError(key + " in configuration.yml must be 'yes', 'no', or 'auto'")
 
+        elif key == "error_plots":
+            if value not in ["between", "floor"]:
+                raise ValueError(key + " in configuration.yml must be 'between' or 'floor'")
+
         elif key == "test_data_config":
             if isinstance(value, int):
                 if value <= 2:
                     raise ValueError(key + " in configuration.yml must at least 3")
+
+        elif key == "threshold_quantile":
+            if 0 <= value <= 1:
+                ValueError(key + " in configuration.yml must be in the range [0, 1]")
 
     return data
 

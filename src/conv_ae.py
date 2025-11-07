@@ -1,4 +1,3 @@
-import keras
 import numpy as np
 import tensorflow as tf
 import pandas as pd
@@ -6,37 +5,41 @@ import pandas as pd
 from src.get_data import process_data_scaling, data_operations
 from src.PlottingManager import PlottingManager
 from src.AnomalyDetector import AnomalyDetector
+from src.LossThresholdCalculator import LossThresholdCalculator
 
 
-def loss_below_threshold(test_reconstructions: tf.Tensor, test_data: np.ndarray, threshold: float) -> tf.Tensor:
+def loss_below_threshold(calculator: LossThresholdCalculator, test_reconstructions: tf.Tensor, test_data: np.ndarray,
+                         threshold: float) -> tf.Tensor:
     """
     Returns:
         tensorflow array, of boolean if datapoint loss < threshold, for each datapoint (a.k.a timestamp) in test_data
     """
-    loss = keras.losses.mean_absolute_error(y_pred=test_reconstructions, y_true=test_data)
+    loss = calculator.calculate_loss(y_pred=test_reconstructions, y_true=test_data)
     return tf.math.less(loss, threshold)
 
 
 def set_draw_reconstructions(draw_reconstructions: str, num_columns: int) -> bool:
-    if draw_reconstructions == "yes":
-        return True
-    elif draw_reconstructions == "no":
+    """
+    returns boolean for if reconstructions should be drawn, depending on draw_reconstructions:
+    'yes', 'no', or 'auto'
+    'auto' draws if num_columns <= 20
+    """
+    try:
+        return {"yes": True,
+                "no": False,
+                "auto": num_columns <= 20}[draw_reconstructions]
+    except KeyError:
+        print(f"draw_reconstructions is invalid value {draw_reconstructions}.\nDefaulting to False")
         return False
-    elif draw_reconstructions == "auto":
-        if num_columns <= 20:
-            return True
-        return False
-
-    print(f"draw_reconstructions is invalid value {draw_reconstructions}.\nDefaulting to False")
-    return False
 
 
-def write_anomalies(test_reconstructions: tf.Tensor, reshaped_test_data: np.ndarray, threshold: float,
-                      date_time_series: pd.Series, file_path: str = "anomaly_stats.txt") -> None:
+def write_anomalies(calculator: LossThresholdCalculator, test_reconstructions: tf.Tensor,
+                    reshaped_test_data: np.ndarray, threshold: float, date_time_series: pd.Series,
+                    filter_message: str, file_path: str = "anomaly_stats.txt") -> None:
     """predicts anomalies and saves info to .txt file"""
 
     # 1 prediction per test_data datapoint
-    predictions = loss_below_threshold(test_reconstructions, reshaped_test_data, threshold)
+    predictions = loss_below_threshold(calculator, test_reconstructions, reshaped_test_data, threshold)
     predictions = tf.reshape(predictions, [-1])  # flatten tensor
     print("\npredictions info: ", tf.size(predictions))
 
@@ -55,9 +58,11 @@ def write_anomalies(test_reconstructions: tf.Tensor, reshaped_test_data: np.ndar
     anomalies.iloc[:, 0] += 2
 
     pd.set_option("display.max_rows", None)
-    output = f"""stats:
+    output = f"""Anomalies
+{filter_message}
+stats:
 no. of anomalies in test_data: {len(anomaly_indices)}
-percentage of anomalies in test_data: {round(len(anomaly_indices)/len(predictions)*100, 1)}%
+percentage of anomalies in test_data: {round(len(anomaly_indices) / len(predictions) * 100, 1)}%
 \nTimestamps in test data marked as anomalies:
 {anomalies}
 """
@@ -67,43 +72,24 @@ percentage of anomalies in test_data: {round(len(anomaly_indices)/len(prediction
     print("\nstats saved to anomaly_stats.txt")
 
 
-def calculate_loss_and_threshold(train_reconstructions: tf.Tensor, test_reconstructions: tf.Tensor,
-                                 reshaped_train_data: np.ndarray, reshaped_test_data: np.ndarray):
-    """threshold is calculated from reshaped_train_data"""
-
-    print("\ncalculating test loss, threshold, & train loss")
-
-    train_loss = tf.reshape(
-        keras.losses.mean_absolute_error(y_pred=train_reconstructions, y_true=reshaped_train_data),
-        shape=[-1]
-    )
-
-    # TODO: allow user to set this
-    # choose threshold that is three standard deviations above the mean - contains 99% of data
-    threshold = float(np.mean(train_loss) + (3*np.std(train_loss)))  # this method is faster than np.quantile
-    print("calculated anomaly Threshold: ", threshold)
-
-    test_loss = tf.reshape(
-        keras.losses.mean_absolute_error(y_pred=test_reconstructions, y_true=reshaped_test_data),
-        shape=[-1]
-    )
-
-    return train_loss, test_loss, threshold
-
-
-def anomaly_detection(data: pd.DataFrame, config_values: dict):
+def anomaly_detection(data: pd.DataFrame, config_values: dict, filter_message: str):
     """
     normalise data, split data, build model, train model, reconstruct test_data, plot graphs, find anomalies
     """
 
     raw_scaled_data, date_time_series, channel_names = process_data_scaling(data)
-    num_channels = raw_scaled_data.shape[1]  # number of columns / features
+    num_channels = raw_scaled_data.shape[1]  # number of columns a.k.a. features a.k.a. parameters
+
+    print("modelling on", num_channels, "parameters\n")
 
     original_train_data, original_test_data, reshaped_train_data, reshaped_test_data = data_operations(
         raw_scaled_data, config_values["input_neurons"], num_channels, config_values
     )
 
     verbose = {True: "auto", False: 0}[config_values["verbose_model"]]
+
+    # LossThresholdCalculator initialised here, as it contains error checking for config_values["threshold_quantile"]
+    calc = LossThresholdCalculator(config_values["loss"], config_values["threshold_quantile"])
 
     # build model
     print("building model")
@@ -144,11 +130,8 @@ def anomaly_detection(data: pd.DataFrame, config_values: dict):
     )  # tf.Tensor
 
     print("\ncalculating stats of all datapoints")
-    train_loss, test_loss, threshold = calculate_loss_and_threshold(
-        train_reconstructions,
-        test_reconstructions,
-        reshaped_train_data, reshaped_test_data
-    )
+    train_loss, test_loss, threshold = calc(train_reconstructions, test_reconstructions,
+                                            reshaped_train_data, reshaped_test_data)
 
     del reshaped_train_data
 
@@ -157,7 +140,8 @@ def anomaly_detection(data: pd.DataFrame, config_values: dict):
         draw_plots=config_values["draw_plots"],  # decides if images are drawn
         draw_reconstructions=set_draw_reconstructions(config_values["draw_reconstructions"], num_channels),
         num_to_show=config_values["num_to_show"],
-        anomaly_split_len=len(original_test_data),
+        error_plot=config_values["error_plot"],
+        anomaly_split_len=len(original_test_data)
     )
 
     plottingManager.plot_reconstructions(
@@ -181,7 +165,10 @@ def anomaly_detection(data: pd.DataFrame, config_values: dict):
 
     plottingManager.plot_loss_histograms(train_loss, test_loss, threshold)
 
-    plottingManager.plot_loss_line_chart(test_loss, threshold)
-    plottingManager.plot_zoomed_loss_line_chart(test_loss, threshold)
+    plottingManager.plot_loss_line_chart("test", test_loss, threshold)
+    plottingManager.plot_loss_line_chart("train", train_loss, threshold)
 
-    write_anomalies(test_reconstructions, reshaped_test_data, threshold, date_time_series)
+    # plottingManager.plot_zoomed_loss_line_chart("train", train_loss, threshold)
+    # plottingManager.plot_zoomed_loss_line_chart("test", test_loss, threshold)
+
+    write_anomalies(calc, test_reconstructions, reshaped_test_data, threshold, date_time_series, filter_message)

@@ -4,10 +4,10 @@ import pandas as pd
 
 
 def main():
-    config_values = load_yaml("configuration.yml")  # ENV
+    config_values = load_yaml("configuration.yml")  # ENV values
     data = pd.read_csv(config_values["train_file_path"], sep=";")
 
-    anomaly_detection(data, config_values)
+    anomaly_detection(data, config_values, "no parameter filtering")
 
 
 if __name__ == "__main__":
