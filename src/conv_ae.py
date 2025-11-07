@@ -82,8 +82,11 @@ def anomaly_detection(data: pd.DataFrame, config_values: dict, filter_message: s
 
     print("modelling on", num_channels, "parameters\n")
 
+    # add column names to config_values, so dataframes from other .csv files can be filtered.
+    config_values["parameters"] = data.columns
+
     original_train_data, original_test_data, reshaped_train_data, reshaped_test_data = data_operations(
-        raw_scaled_data, config_values["input_neurons"], num_channels, config_values
+        raw_scaled_data, num_channels, config_values
     )
 
     verbose = {True: "auto", False: 0}[config_values["verbose_model"]]
