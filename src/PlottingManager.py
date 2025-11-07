@@ -18,12 +18,13 @@ class PlottingManager:
         self.draw_plots = draw_plots
         self.train_reconstructions_path = "images/plots/train_reconstructions"
         self.test_reconstructions_path = "images/plots/test_reconstructions"
+        self.combined_reconstructions_path = "images/plots/combined_reconstructions"
         self.stats_path = "images/stats"
         self.draw_reconstructions = draw_reconstructions
         self.error_plot = error_plot
 
         if num_to_show is None:
-            self.num_to_show = anomaly_split_len
+            self.num_to_show = None
 
         elif num_to_show > anomaly_split_len:
             print(f"""num_to_show ({num_to_show}) larger than anomaly detection split ({anomaly_split_len}).
@@ -74,9 +75,11 @@ Limiting to {anomaly_split_len}""")
                 ax.set_ylabel("Normalised values")
                 ax.legend()
 
-                file_name = f"plot_{column_names[x]}.png"
-                full_path = {"test": os.path.join(self.test_reconstructions_path, file_name),
-                             "train": os.path.join(self.train_reconstructions_path, file_name)}[split_name]
+                folder_path = {"test": self.test_reconstructions_path,
+                               "train": self.train_reconstructions_path,
+                               "combined": self.combined_reconstructions_path}[split_name]
+
+                full_path = os.path.join(folder_path, f"plot_{column_names[x]}.png")
 
                 self.save_fig(fig, full_path, verbose=False)
 

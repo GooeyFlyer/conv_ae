@@ -148,15 +148,20 @@ def anomaly_detection(data: pd.DataFrame, config_values: dict, filter_message: s
         "train",
         original_train_data,
         train_reconstructions.reshape(1, -1, num_channels)[0],  # flatten array
-        loss=train_loss,
-        column_names=channel_names
+        loss=train_loss, column_names=channel_names
     )
     plottingManager.plot_reconstructions(
         "test",
         original_test_data,
         test_reconstructions.reshape(1, -1, num_channels)[0],  # flatten array
-        loss=test_loss,
-        column_names=channel_names
+        loss=test_loss, column_names=channel_names
+    )
+    plottingManager.plot_reconstructions(
+        "combined",
+        np.concatenate((original_train_data, original_test_data)),
+        np.concatenate((train_reconstructions.reshape(1, -1, num_channels)[0],
+                       test_reconstructions.reshape(1, -1, num_channels)[0])),
+        loss=tf.concat([train_loss, test_loss], axis=0), column_names=channel_names
     )
 
     plottingManager.plot_model_loss_val_loss(history)
