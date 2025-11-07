@@ -40,7 +40,6 @@ def verify_yaml_values(data: dict) -> dict:
         "draw_plots": [bool],
         "draw_reconstructions": [str],
         "error_plot": [str],
-        "num_to_show": [int, type(None)],
         "verbose_model": [bool],
         "strides": [int],
         "pool_size": [int],

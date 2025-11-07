@@ -139,9 +139,7 @@ def anomaly_detection(data: pd.DataFrame, config_values: dict, filter_message: s
     plottingManager = PlottingManager(
         draw_plots=config_values["draw_plots"],  # decides if images are drawn
         draw_reconstructions=set_draw_reconstructions(config_values["draw_reconstructions"], num_channels),
-        num_to_show=config_values["num_to_show"],
         error_plot=config_values["error_plot"],
-        anomaly_split_len=len(original_test_data)
     )
 
     plottingManager.plot_reconstructions(
