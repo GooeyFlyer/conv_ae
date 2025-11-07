@@ -49,12 +49,7 @@ def verify_yaml_values(data: dict) -> dict:
         "loss": [str],
         "threshold_quantile": [float],
         "input_neurons": [int],
-        "epochs": [int],
-        "GroupSystem": [str, type(None)],
-        "System": [str, type(None)],
-        "Subsystem": [str, type(None)],
-        "Component": [str, type(None)],
-        "Sensor": [str, type(None)]
+        "epochs": [int]
     }
 
     for key, value in data.items():
