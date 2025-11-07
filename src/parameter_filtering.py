@@ -73,7 +73,7 @@ def parameter_filtering(data: pd.DataFrame, config_values: dict) -> tuple[pd.Dat
 
     message = f"""
 filtered to: {pretty_columns}
-included parameters: {" ".join(filtered_parameters)}
+included parameters: {", ".join(filtered_parameters)}
 """
 
     filtered_parameters.insert(0, "Date_Time")  # include Date_Time column
