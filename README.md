@@ -4,6 +4,14 @@ A convolutional autoencoder designed for anomaly detection in multivariate time-
 
 ## Usage
 
+### Parameter filtering
+
+To filter the parameters (a.k.a. columns/features) in your *.csv* file, you can select
+options for the System, Subsystem, Component, etc, in *configuration.yml*.
+
+This requires a "lookup table", such as the one describing parameters of RCP systems.
+This table must be converted into *.csv*.
+
 ### Splitting
 
 #### Option 1: Train on and detect anomalies on one file:
