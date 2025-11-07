@@ -6,32 +6,19 @@ import os
 
 
 class PlottingManager:
-    def __init__(self, draw_plots: bool, num_to_show: int, draw_reconstructions: bool, error_plot: str,
-                 anomaly_split_len: int):
+    def __init__(self, draw_plots: bool, draw_reconstructions: bool, error_plot: str):
         """
         Parameters:
             draw_plots (bool): decides if images are drawn
-            num_to_show (int): datapoints from index 0 (inclusive) that are plotted
             draw_reconstructions (bool): decides if reconstruction plots are drawn
-            anomaly_split_len (int): the length of data for anomaly detection
         """
         self.draw_plots = draw_plots
         self.train_reconstructions_path = "images/plots/train_reconstructions"
         self.test_reconstructions_path = "images/plots/test_reconstructions"
+        self.combined_reconstructions_path = "images/plots/combined_reconstructions"
         self.stats_path = "images/stats"
         self.draw_reconstructions = draw_reconstructions
         self.error_plot = error_plot
-
-        if num_to_show is None:
-            self.num_to_show = anomaly_split_len
-
-        elif num_to_show > anomaly_split_len:
-            print(f"""num_to_show ({num_to_show}) larger than anomaly detection split ({anomaly_split_len}).
-Limiting to {anomaly_split_len}""")
-            self.num_to_show = anomaly_split_len
-
-        else:
-            self.num_to_show = num_to_show
 
         if self.draw_plots:
             for x in [self.train_reconstructions_path, self.test_reconstructions_path, self.stats_path]:
@@ -43,24 +30,23 @@ Limiting to {anomaly_split_len}""")
 
         if self.draw_plots and self.draw_reconstructions:
             print(f"\nplotting original {split_name} data against reconstructed data")
-            print(f"first {self.num_to_show} datapoints")
             for x in range(0, original_data.shape[1]):  # for every channel
                 fig, ax = plt.subplots(figsize=(10, 6))
-                ax.plot((reconstructed_data[:, x])[:self.num_to_show], label="reconstructed", color="r")
-                ax.plot((original_data[:, x])[:self.num_to_show], label=f"original", color="b")
-                ax.plot(loss[:self.num_to_show], label=f"{split_name} loss", color="g")
+                ax.plot((reconstructed_data[:, x]), label="reconstructed", color="r")
+                ax.plot((original_data[:, x]), label=f"original", color="b")
+                ax.plot(loss, label=f"{split_name} loss", color="g")
 
                 if self.error_plot == "floor":
                     diff = abs(original_data[:, x] - reconstructed_data[:, x])
                     ax.plot(
-                        diff[:self.num_to_show], label="error", color="lightcoral"
+                        diff, label="error", color="lightcoral"
                     )
 
                 elif self.error_plot == "between":
                     ax.fill_between(
-                        np.arange(len((original_data[:, x])[:self.num_to_show])),
-                        (original_data[:, x])[:self.num_to_show],
-                        (reconstructed_data[:, x])[:self.num_to_show],
+                        np.arange(len((original_data[:, x]))),
+                        (original_data[:, x]),
+                        (reconstructed_data[:, x]),
                         label="error", color="lightcoral"
                     )
 
@@ -74,9 +60,11 @@ Limiting to {anomaly_split_len}""")
                 ax.set_ylabel("Normalised values")
                 ax.legend()
 
-                file_name = f"plot_{column_names[x]}.png"
-                full_path = {"test": os.path.join(self.test_reconstructions_path, file_name),
-                             "train": os.path.join(self.train_reconstructions_path, file_name)}[split_name]
+                folder_path = {"test": self.test_reconstructions_path,
+                               "train": self.train_reconstructions_path,
+                               "combined": self.combined_reconstructions_path}[split_name]
+
+                full_path = os.path.join(folder_path, f"plot_{column_names[x]}.png")
 
                 self.save_fig(fig, full_path, verbose=False)
 
@@ -143,7 +131,7 @@ Limiting to {anomaly_split_len}""")
         if self.draw_plots:
             fig, ax = plt.subplots(figsize=(10, 6))
 
-            self.draw_loss_line(ax, loss[:self.num_to_show], threshold, title)
+            self.draw_loss_line(ax, loss, threshold, title)
 
             ax.set_ylim(0)
             ax.set_title(f"""reconstruction loss in {title}_data""")
@@ -158,7 +146,7 @@ Limiting to {anomaly_split_len}""")
         if self.draw_plots:
             fig, ax = plt.subplots(figsize=(10, 6))
 
-            y = test_loss[:self.num_to_show]
+            y = test_loss
             self.draw_loss_line(ax, y, threshold, title)
 
             max_x = range(len(y))[np.argmax(y)]  # x value of max_loss

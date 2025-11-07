@@ -40,7 +40,6 @@ def verify_yaml_values(data: dict) -> dict:
         "draw_plots": [bool],
         "draw_reconstructions": [str],
         "error_plot": [str],
-        "num_to_show": [int, type(None)],
         "verbose_model": [bool],
         "strides": [int],
         "pool_size": [int],
@@ -51,6 +50,11 @@ def verify_yaml_values(data: dict) -> dict:
         "threshold_quantile": [float],
         "input_neurons": [int],
         "epochs": [int],
+        "GroupSystem": [str, type(None)],
+        "System": [str, type(None)],
+        "Subsystem": [str, type(None)],
+        "Component": [str, type(None)],
+        "Sensor": [str, type(None)]
     }
 
     for key, value in data.items():

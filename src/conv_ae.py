@@ -82,8 +82,11 @@ def anomaly_detection(data: pd.DataFrame, config_values: dict, filter_message: s
 
     print("modelling on", num_channels, "parameters\n")
 
+    # add column names to config_values, so dataframes from other .csv files can be filtered.
+    config_values["parameters"] = data.columns
+
     original_train_data, original_test_data, reshaped_train_data, reshaped_test_data = data_operations(
-        raw_scaled_data, config_values["input_neurons"], num_channels, config_values
+        raw_scaled_data, num_channels, config_values
     )
 
     verbose = {True: "auto", False: 0}[config_values["verbose_model"]]
@@ -139,24 +142,27 @@ def anomaly_detection(data: pd.DataFrame, config_values: dict, filter_message: s
     plottingManager = PlottingManager(
         draw_plots=config_values["draw_plots"],  # decides if images are drawn
         draw_reconstructions=set_draw_reconstructions(config_values["draw_reconstructions"], num_channels),
-        num_to_show=config_values["num_to_show"],
         error_plot=config_values["error_plot"],
-        anomaly_split_len=len(original_test_data)
     )
 
     plottingManager.plot_reconstructions(
         "train",
         original_train_data,
         train_reconstructions.reshape(1, -1, num_channels)[0],  # flatten array
-        loss=train_loss,
-        column_names=channel_names
+        loss=train_loss, column_names=channel_names
     )
     plottingManager.plot_reconstructions(
         "test",
         original_test_data,
         test_reconstructions.reshape(1, -1, num_channels)[0],  # flatten array
-        loss=test_loss,
-        column_names=channel_names
+        loss=test_loss, column_names=channel_names
+    )
+    plottingManager.plot_reconstructions(
+        "combined",
+        np.concatenate((original_train_data, original_test_data)),
+        np.concatenate((train_reconstructions.reshape(1, -1, num_channels)[0],
+                       test_reconstructions.reshape(1, -1, num_channels)[0])),
+        loss=tf.concat([train_loss, test_loss], axis=0), column_names=channel_names
     )
 
     plottingManager.plot_model_loss_val_loss(history)
