@@ -1,14 +1,17 @@
 import tensorflow as tf
 import keras
 import numpy as np
+import logging
+logger = logging.getLogger("simple_logger")
 
 
 class LossThresholdCalculator:
-    def __init__(self, loss: str, threshold_quantile: float):
+    def __init__(self, loss: str, threshold_quantiles: tuple[float, float]):
         """
         Parameters:
             loss (str): choice of loss function. See README for details
-            threshold_quantile (float): quantile decimal between 0 and 1, for threshold will be set at
+            threshold_quantiles (tuple[float, float]): tuple of quantile decimals between 0 and 1,
+                that thresholds will be set at
         """
 
         # you can add your own functions here, ensure they conform to f(y_pred, y_true)
@@ -29,15 +32,15 @@ class LossThresholdCalculator:
         except KeyError:
             raise KeyError(f"loss ({loss}) not found. Supported options are {loss_function_dict.keys()}")
 
-        if 0 <= threshold_quantile <= 1:
-            self.threshold_quantile = threshold_quantile
+        for x in threshold_quantiles:
+            if not(0 <= x <= 1):
+                raise ValueError(f"threshold_quantiles ({threshold_quantiles}) must be in the range [0, 1]")
 
-        else:
-            raise ValueError(f"threshold_quantile ({threshold_quantile}) must be in the range [0, 1]")
+        self.threshold_quantiles = threshold_quantiles
 
     def __call__(self, train_reconstructions: tf.Tensor, test_reconstructions: tf.Tensor,
                  reshaped_train_data: tf.Tensor, reshaped_test_data: tf.Tensor,
-                 *args, **kwargs) -> tuple[tf.Tensor, tf.Tensor, float]:
+                 *args, **kwargs) -> tuple[tf.Tensor, tf.Tensor, tuple[float, float]]:
         """
         returns loss arrays with values between 0 and 1.
         Parameters:
@@ -48,26 +51,25 @@ class LossThresholdCalculator:
         Returns:
             train_loss (tf.Tensor): loss for train data
             test_loss (tf.Tensor): loss for test data (anomaly detection split)
-            threshold (float): the threshold calculated from train_loss, used for anomaly labelling
+            thresholds (tuple[float]): tuple of thresholds calculated from train_loss, used for anomaly labelling
         """
-
-        print("\ncalculating test loss, threshold, & train loss")
-        print(f"using {self.loss} and threshold quantile {self.threshold_quantile}")
 
         train_loss = tf.reshape(
             self.calculate_loss(y_pred=train_reconstructions, y_true=reshaped_train_data),
             shape=[-1]
         )
 
-        threshold = np.quantile(train_loss, self.threshold_quantile)
-        print("calculated anomaly Threshold: ", threshold)
+        threshold_s2 = np.quantile(train_loss, self.threshold_quantiles[0])
+
+        threshold_s3 = np.quantile(train_loss, self.threshold_quantiles[1])
+        logger.info(f"threshold status 2: {threshold_s2:.4f}, status 3: {threshold_s3:.4f}")
 
         test_loss = tf.reshape(
             self.calculate_loss(y_pred=test_reconstructions, y_true=reshaped_test_data),
             shape=[-1]
         )
 
-        return train_loss, test_loss, threshold
+        return train_loss, test_loss, (threshold_s2, threshold_s3)
 
         # modify the result of keras loss functions to fit with PlottingManager
 
@@ -85,3 +87,53 @@ class LossThresholdCalculator:
         """adds 1 to result of keras cosine_similarity"""
         loss = keras.losses.cosine_similarity(y_true, y_pred)
         return loss + 1
+
+    def calculate_status_from_loss(self, loss: tf.Tensor, thresholds: tuple[float, float]) -> list[int]:
+        """
+        returns an array of size loss, with values 1-3, indicating status
+        Parameters:
+            loss (tf.Tensor): loss tensor
+            thresholds (tuple[float, float]): tuple of thresholds for status 2 and 3
+        """
+
+        status_array = []
+
+        for x in loss:
+            if x < thresholds[0]:
+                status_array.append(1)
+            elif thresholds[0] <= x < thresholds[1]:
+                status_array.append(2)
+            elif thresholds[1] <= x:
+                status_array.append(3)
+            else:
+                raise ValueError(f"{x} in loss array broken")
+
+        return status_array
+
+    def contribution_axis(self, axis_values: np.ndarray) -> np.ndarray:
+        total = np.sum(axis_values)
+        return axis_values / total
+
+    def calculate_contribution_errors(self, errors: np.ndarray[np.ndarray]) -> np.ndarray[np.ndarray]:
+        """takes a list of multiple error numpy arrays, returns 2d numpy, normalised to contribution errors
+        return shape (data_points, channels)"""
+
+        for index in range(errors.shape[0]):  # for every row
+            errors[index, :] = self.contribution_axis(errors[index, :])
+
+        return errors
+
+    def calculate_abs_error_per_channel(self, original_data, flat_recons) -> np.ndarray[np.ndarray]:
+        """returns 2D array of abs error between original and recon, for each parameter
+        return shape (data_points, channels)"""
+
+        errors = np.zeros(original_data.shape)
+        for index in range(original_data.shape[1]):  # for every channel
+            org_column = original_data[:, index]
+            recon_column = flat_recons[:, index]
+
+            errors[:, index] = np.abs(org_column - recon_column)
+
+        return errors
+
+

@@ -2,20 +2,13 @@ import numpy as np
 import tensorflow as tf
 import pandas as pd
 
-from src.get_data import process_data_scaling, data_operations
 from src.PlottingManager import PlottingManager
 from src.AnomalyDetector import AnomalyDetector
 from src.LossThresholdCalculator import LossThresholdCalculator
+from src.save_to_csv import save_to_csv
 
-
-def loss_below_threshold(calculator: LossThresholdCalculator, test_reconstructions: tf.Tensor, test_data: np.ndarray,
-                         threshold: float) -> tf.Tensor:
-    """
-    Returns:
-        tensorflow array, of boolean if datapoint loss < threshold, for each datapoint (a.k.a timestamp) in test_data
-    """
-    loss = calculator.calculate_loss(y_pred=test_reconstructions, y_true=test_data)
-    return tf.math.less(loss, threshold)
+import logging
+logger = logging.getLogger("simple_logger")
 
 
 def set_draw_reconstructions(draw_reconstructions: str, num_columns: int) -> bool:
@@ -27,75 +20,47 @@ def set_draw_reconstructions(draw_reconstructions: str, num_columns: int) -> boo
     try:
         return {"yes": True,
                 "no": False,
-                "auto": num_columns <= 20}[draw_reconstructions]
+                "auto": num_columns <= 20,
+                True: True,
+                False: False}[draw_reconstructions]
     except KeyError:
-        print(f"draw_reconstructions is invalid value {draw_reconstructions}.\nDefaulting to False")
+        logger.error(f"draw_reconstructions is invalid value {draw_reconstructions}.\nDefaulting to False")
         return False
 
 
-def write_anomalies(calculator: LossThresholdCalculator, test_reconstructions: tf.Tensor,
-                    reshaped_test_data: np.ndarray, threshold: float, date_time_series: pd.Series,
-                    filter_message: str, file_path: str = "anomaly_stats.txt") -> None:
-    """predicts anomalies and saves info to .txt file"""
-
-    # 1 prediction per test_data datapoint
-    predictions = loss_below_threshold(calculator, test_reconstructions, reshaped_test_data, threshold)
-    predictions = tf.reshape(predictions, [-1])  # flatten tensor
-    print("\npredictions info: ", tf.size(predictions))
-
-    # saves indices of anomalies (False values) in predictions
-    anomaly_indices = [i for i in range(len(predictions)) if not predictions[i]]
-
-    # filters Date_Time Series to just values in test_data
-    test_date_time_series = (date_time_series[-len(predictions):]).reset_index()
-
-    # filters test_date_time_series by indices saved in anomalies
-    anomalies = test_date_time_series[
-        test_date_time_series.index.isin(anomaly_indices)
-    ]
-
-    anomalies = anomalies.rename(columns={"index": "file_line_number"})
-    anomalies.iloc[:, 0] += 2
-
-    pd.set_option("display.max_rows", None)
-    output = f"""Anomalies
-{filter_message}
-stats:
-no. of anomalies in test_data: {len(anomaly_indices)}
-percentage of anomalies in test_data: {round(len(anomaly_indices) / len(predictions) * 100, 1)}%
-\nTimestamps in test data marked as anomalies:
-{anomalies}
-"""
-    with open(file_path, "w") as file:
-        file.write(output)
-
-    print("\nstats saved to anomaly_stats.txt")
-
-
-def anomaly_detection(data: pd.DataFrame, config_values: dict, filter_message: str):
+def anomaly_detection(train_df: pd.DataFrame, test_df: pd.DataFrame, config_values: dict):
     """
     normalise data, split data, build model, train model, reconstruct test_data, plot graphs, find anomalies
     """
 
-    raw_scaled_data, date_time_series, channel_names = process_data_scaling(data)
-    num_channels = raw_scaled_data.shape[1]  # number of columns a.k.a. features a.k.a. parameters
+    train_Date_Time = train_df.pop("Date_Time")
+    test_Date_Time = test_df.pop("Date_Time")
 
-    print("modelling on", num_channels, "parameters\n")
+    logger.info(f"train shape: {train_df.shape[0]} datapoints {train_df.shape[1]} parameters")
+    logger.info(f"test shape: {test_df.shape[0]} datapoints {test_df.shape[1]} parameters")
 
-    # add column names to config_values, so dataframes from other .csv files can be filtered.
-    config_values["parameters"] = data.columns
+    channel_names = train_df.columns.tolist()
+    num_channels = len(channel_names)
 
-    original_train_data, original_test_data, reshaped_train_data, reshaped_test_data = data_operations(
-        raw_scaled_data, num_channels, config_values
-    )
+    original_train_data = train_df.to_numpy()
+    original_test_data = test_df.to_numpy()
+
+    # batch shape, steps_in_batch, num features
+    reshaped_train_data = original_train_data.reshape((-1, config_values["input_neurons"], num_channels))
+    reshaped_test_data = original_test_data.reshape((-1, config_values["input_neurons"], num_channels))
+
+    # raw_scaled_data, date_time_series, channel_names = process_data_scaling(data)
+
+    logger.info(f"modelling on {num_channels} parameters:")
 
     verbose = {True: "auto", False: 0}[config_values["verbose_model"]]
 
-    # LossThresholdCalculator initialised here, as it contains error checking for config_values["threshold_quantile"]
-    calc = LossThresholdCalculator(config_values["loss"], config_values["threshold_quantile"])
+    # LossThresholdCalculator initialised here, as it contains error checking for config_values["threshold_s2_quantile"]
+    calc = LossThresholdCalculator(config_values["loss"],
+                                   (config_values["threshold_s2_quantile"], config_values["threshold_s3_quantile"]))
 
     # build model
-    print("building model")
+    logger.info("building model")
     autoencoder = AnomalyDetector(
         num_input_neurons=config_values["input_neurons"],
         num_features=num_channels,
@@ -111,7 +76,7 @@ def anomaly_detection(data: pd.DataFrame, config_values: dict, filter_message: s
         autoencoder.decoder.summary()
 
     # train model
-    print("training model")
+    logger.info("training model")
     history = autoencoder.fit(
         reshaped_train_data, reshaped_train_data,
         epochs=config_values["epochs"],
@@ -120,7 +85,7 @@ def anomaly_detection(data: pd.DataFrame, config_values: dict, filter_message: s
         verbose=verbose
     )
 
-    print("\nreconstructing data")
+    logger.info("reconstructing data")
     train_reconstructions = autoencoder.predict(
         reshaped_train_data,
         batch_size=reshaped_train_data.shape[0],
@@ -132,49 +97,72 @@ def anomaly_detection(data: pd.DataFrame, config_values: dict, filter_message: s
         verbose=verbose
     )  # tf.Tensor
 
-    print("\ncalculating stats of all datapoints")
-    train_loss, test_loss, threshold = calc(train_reconstructions, test_reconstructions,
-                                            reshaped_train_data, reshaped_test_data)
+    logger.info("calculating stats of all datapoints")
 
-    del reshaped_train_data
+    flat_train_recons = train_reconstructions.reshape(1, -1, num_channels)[0]  # flatten array
+    flat_test_recons = test_reconstructions.reshape(1, -1, num_channels)[0]  # flatten array
 
-    print("\nplotting")
+    test_abs_errors = calc.calculate_abs_error_per_channel(original_test_data, flat_test_recons)
+
+    test_cont_errors = calc.calculate_contribution_errors(test_abs_errors)
+
+    train_loss, test_loss, thresholds = calc(train_reconstructions, test_reconstructions,
+                                             reshaped_train_data, reshaped_test_data)
+
+    train_status = calc.calculate_status_from_loss(train_loss, thresholds)
+    test_status = calc.calculate_status_from_loss(test_loss, thresholds)
+
+    logger.info("saving data")
+    save_to_csv(f"results/calculated_data.csv", original_test_data, flat_test_recons, test_cont_errors,
+                test_abs_errors, test_loss, test_status, test_Date_Time, channel_names)
+
+    del reshaped_train_data, test_abs_errors, train_reconstructions, test_reconstructions
+
+    # write_anomalies(calc, test_reconstructions, reshaped_test_data, threshold, date_time_series, filter_message)
+
+    logger.info("plotting")
+
+    num_channels = original_train_data.shape[1]
+
     plottingManager = PlottingManager(
         draw_plots=config_values["draw_plots"],  # decides if images are drawn
         draw_reconstructions=set_draw_reconstructions(config_values["draw_reconstructions"], num_channels),
         error_plot=config_values["error_plot"],
+        verbose=False
     )
 
     plottingManager.plot_reconstructions(
         "train",
         original_train_data,
-        train_reconstructions.reshape(1, -1, num_channels)[0],  # flatten array
+        flat_train_recons,  # flatten array
         loss=train_loss, column_names=channel_names
     )
     plottingManager.plot_reconstructions(
         "test",
         original_test_data,
-        test_reconstructions.reshape(1, -1, num_channels)[0],  # flatten array
+        flat_test_recons,  # flatten array
         loss=test_loss, column_names=channel_names
     )
     plottingManager.plot_reconstructions(
         "combined",
         np.concatenate((original_train_data, original_test_data)),
-        np.concatenate((train_reconstructions.reshape(1, -1, num_channels)[0],
-                       test_reconstructions.reshape(1, -1, num_channels)[0])),
+        np.concatenate((flat_train_recons, flat_test_recons)),
         loss=tf.concat([train_loss, test_loss], axis=0), column_names=channel_names
     )
+    del flat_train_recons, flat_test_recons, original_train_data, original_test_data
+
+    plottingManager.plot_contribution_errors(test_cont_errors, channel_names)
+
+    del test_cont_errors
 
     plottingManager.plot_model_loss_val_loss(history)
 
-    del original_train_data, original_test_data, train_reconstructions, history
+    del history
 
-    plottingManager.plot_loss_histograms(train_loss, test_loss, threshold)
+    plottingManager.plot_loss_histograms(train_loss, test_loss, thresholds)
 
-    plottingManager.plot_loss_line_chart("test", test_loss, threshold)
-    plottingManager.plot_loss_line_chart("train", train_loss, threshold)
+    plottingManager.plot_loss_line_chart("train", train_loss, train_status, thresholds)
+    plottingManager.plot_loss_line_chart("test", test_loss, test_status, thresholds)
 
     # plottingManager.plot_zoomed_loss_line_chart("train", train_loss, threshold)
     # plottingManager.plot_zoomed_loss_line_chart("test", test_loss, threshold)
-
-    write_anomalies(calc, test_reconstructions, reshaped_test_data, threshold, date_time_series, filter_message)

@@ -36,9 +36,9 @@ def verify_yaml_values(data: dict) -> dict:
     # a setting here does not have to be in the data dictionary
     setting_types = {
         "train_file_path": [str],
-        "test_data_config": [str, type(None), int],
+        "test_data_config": [str, type(None), int, float],
         "draw_plots": [bool],
-        "draw_reconstructions": [str],
+        "draw_reconstructions": [str, bool],
         "error_plot": [str],
         "verbose_model": [bool],
         "strides": [int],
@@ -47,7 +47,8 @@ def verify_yaml_values(data: dict) -> dict:
         "activation": [str],
         "optimizer": [str],
         "loss": [str],
-        "threshold_quantile": [float],
+        "threshold_s2_quantile": [float],
+        "threshold_s3_quantile": [float],
         "input_neurons": [int],
         "epochs": [int]
     }
@@ -62,7 +63,8 @@ def verify_yaml_values(data: dict) -> dict:
 
         if not valid:
             raise ValueError(
-                key + " in configuration.yml must be a " + expected_type_array_as_string(expected_type_array)
+                f"""{key} {str(value)} in configuration.yml must be a
+{expected_type_array_as_string(expected_type_array)}"""
             )
 
         # special cases handled below
@@ -73,7 +75,7 @@ def verify_yaml_values(data: dict) -> dict:
                     raise ValueError(key + " in configuration.yml must at least 1")
 
         elif key == "draw_reconstructions":
-            if value not in ["yes", "no", "auto"]:
+            if value not in ["yes", "no", "auto", True, False]:
                 raise ValueError(key + " in configuration.yml must be 'yes', 'no', or 'auto'")
 
         elif key == "error_plots":
@@ -85,7 +87,7 @@ def verify_yaml_values(data: dict) -> dict:
                 if value <= 2:
                     raise ValueError(key + " in configuration.yml must at least 3")
 
-        elif key == "threshold_quantile":
+        elif key in ["threshold_s2_quantile", "threshold_s3_quantile"]:
             if 0 <= value <= 1:
                 ValueError(key + " in configuration.yml must be in the range [0, 1]")
 

@@ -1,11 +1,11 @@
 data:
   train_file_path: <insert_file_path>  # file_path of .csv file
-  test_data_config: <insert_option> # empty, integer, or file_path of .csv file
+  test_data_config: <insert_option> # empty, integer, decimal, or file_path of .csv file
 
 other:
   draw_plots: True  # decides if images are drawn
-  draw_reconstructions: auto  # decides if reconstruction plots are drawn. "auto" draws if channels <= 20
-  error_plot: between # picks how error between real and reconstructed error is drawn. "between" or "floor"
+  draw_reconstructions: yes  # decides if reconstruction plots are drawn. "yes", "no", "auto" (draws if channels <= 20)
+  error_plot: between  # picks how error between real and reconstructed error is drawn. "between" or "floor"
   verbose_model: False
 
 model:
@@ -17,4 +17,5 @@ model:
   activation: relu
   optimizer: adam
   loss: mean_absolute_error  # mean_absolute_error, mean_squared_error, mean_squared_logarithmic_error, huber, log_cosh
-  threshold_quantile: 0.99  # 0 to 1
+  threshold_s2_quantile: 0.95  # threshold for status 2. decimal 0 to 1
+  threshold_s3_quantile: 0.99  # threshold for status 3. decimal 0 to 1
