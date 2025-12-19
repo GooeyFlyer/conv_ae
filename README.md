@@ -19,7 +19,7 @@ A convolutional autoencoder designed for anomaly detection in multivariate time-
 #### Option 3: Split data in one file into training and anomaly detection
 - Move 1 _.csv_ file into the data folder.
 - Open _configuration.yml_ and change _train_file_path_ to a .csv file for training.
-- Change _test_data_config_ to a file line number, where you want the model to train
+- Change _test_data_config_ to a file line number, or percentage, where you want the model to train
 on data up to and including the line, and detect anomalies on data after the line.
 
 **Note:** if a split does not fit the input shape of the model, the final datapoint
@@ -31,10 +31,6 @@ Change any other settings in _configuration.yml_
 
 Run `python main.py`
 
-Anomalies are listed in *anomaly_stats.txt*
-
-Reconstructed graphs of both the training and anomaly detection split are saved in
-*images/plots/*
-
-Stats of the model, including loss in reconstructed data,
-are saved in *images/stats/*
+The _results/_ folder contains reconstruction plots, stats plots of the model,
+and a .csv file containing test data, reconstructed data,
+absolute and contribution errors, model loss, and anomaly status.
