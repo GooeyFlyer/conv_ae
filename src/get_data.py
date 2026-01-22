@@ -10,7 +10,7 @@ logger = logging.getLogger("simple_logger")
 
 def process_data_scaling(data: pd.DataFrame) -> pd.DataFrame:
     """
-    imputes missing values, scales columns independently
+    imputes missing values, scales features independently, scales between 0 and 1
     Returns:
         scaled dataframe
     """
@@ -18,7 +18,7 @@ def process_data_scaling(data: pd.DataFrame) -> pd.DataFrame:
     data = format_data(data)
 
     date_time_series = data.pop("Date_Time")  # remove Date_Time column
-    date_time_series = date_time_series.apply(lambda x: x[:-13])  # remove last 13 characters (time info)
+    date_time_series = date_time_series.apply(lambda x: x[:8])  # get first 8 characters (date only)
 
     # missing values imputed with np.nan
     imputer = SimpleImputer(missing_values=np.nan)
@@ -26,12 +26,11 @@ def process_data_scaling(data: pd.DataFrame) -> pd.DataFrame:
     data = data.reset_index(drop=True)
 
     # feature scaling - ensure they all fall within 0 to 1
+    # scales features independently
+    # (x - xmin) / (xmax - xmin) -> where xmin is minimum value in feature and xmax is maximum
     scalar = MinMaxScaler(feature_range=(0, 1))
     df_scaled = scalar.fit_transform(data.to_numpy())
     df_scaled = pd.DataFrame(df_scaled, columns=list(data.columns))
-
-    # use for target scaling of specific columns
-    # target_scalar = MinMaxScaler(feature_range=(0, 1))
 
     # add back Date_Time
     df_scaled = df_scaled.astype(float)
@@ -40,7 +39,7 @@ def process_data_scaling(data: pd.DataFrame) -> pd.DataFrame:
     return df_scaled
 
 
-def raw_data(data: pd.DataFrame) -> tuple[np.ndarray, pd.Series, list]:
+def make_raw_data(data: pd.DataFrame) -> tuple[np.ndarray, pd.Series, list]:
     """removes Date_Time column
     returns raw_data, Date_Time column, column names"""
     date_time_series = data.pop("Date_Time")  # remove Date_Time column
@@ -48,9 +47,9 @@ def raw_data(data: pd.DataFrame) -> tuple[np.ndarray, pd.Series, list]:
 
 
 def format_data(data: pd.DataFrame) -> pd.DataFrame:
-    """skips Date_Time column and formats data
+    """removes FileId column if present. skips Date_Time column and formats data
     Returns:
-        data (pd.DataFrame)"""
+        data (pd.DataFrame) with Date_Time column"""
 
     if "FileId" in data.columns:
         data = data.drop(columns="FileId", axis=1)
@@ -125,7 +124,7 @@ def split_by_test_data_config(data: pd.DataFrame | np.ndarray, config_values
         )
 
         if isinstance(original_train_data, np.ndarray):
-            original_test_data, _, _ = raw_data(original_test_data)
+            original_test_data, _, _ = make_raw_data(original_test_data)
 
     else:
         raise ValueError("test_data_config not of type int, float, None, or str")
@@ -197,3 +196,4 @@ if __name__ == "__main__":
     print("\nextended split shapes:")
     print("oa.shape: ", extend_data(oa, 12).shape)
     print("ob.shape: ", extend_data(ob, 12).shape)
+    

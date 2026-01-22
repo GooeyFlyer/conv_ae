@@ -88,22 +88,22 @@ class LossThresholdCalculator:
         loss = keras.losses.cosine_similarity(y_true, y_pred)
         return loss + 1
 
-    def calculate_status_from_loss(self, loss: tf.Tensor, thresholds: tuple[float, float]) -> list[int]:
+    def calculate_status_from_loss(self, loss: tf.Tensor, threshold_values: tuple[float, float]) -> list[int]:
         """
         returns an array of size loss, with values 1-3, indicating status
         Parameters:
             loss (tf.Tensor): loss tensor
-            thresholds (tuple[float, float]): tuple of thresholds for status 2 and 3
+            threshold_values (tuple[float, float]): tuple of actual (not percentage) thresholds for status 2 and 3
         """
 
         status_array = []
 
         for x in loss:
-            if x < thresholds[0]:
+            if x < threshold_values[0]:
                 status_array.append(1)
-            elif thresholds[0] <= x < thresholds[1]:
+            elif threshold_values[0] <= x < threshold_values[1]:
                 status_array.append(2)
-            elif thresholds[1] <= x:
+            elif threshold_values[1] <= x:
                 status_array.append(3)
             else:
                 raise ValueError(f"{x} in loss array broken")
@@ -111,21 +111,24 @@ class LossThresholdCalculator:
         return status_array
 
     def contribution_axis(self, axis_values: np.ndarray) -> np.ndarray:
+        """contribution error of single datapoint"""
+
         total = np.sum(axis_values)
         return axis_values / total
 
     def calculate_contribution_errors(self, errors: np.ndarray[np.ndarray]) -> np.ndarray[np.ndarray]:
         """takes a list of multiple error numpy arrays, returns 2d numpy, normalised to contribution errors
-        return shape (data_points, channels)"""
+        data shape (data_points, channels)"""
 
-        for index in range(errors.shape[0]):  # for every row
-            errors[index, :] = self.contribution_axis(errors[index, :])
+        for index in range(errors.shape[0]):  # for every datapoint
+            errors[index, :] = self.contribution_axis(errors[index, :])  # datapoint
 
         return errors
 
-    def calculate_abs_error_per_channel(self, original_data, flat_recons) -> np.ndarray[np.ndarray]:
-        """returns 2D array of abs error between original and recon, for each parameter
-        return shape (data_points, channels)"""
+    def calculate_abs_error_per_channel(self, original_data: np.ndarray[np.ndarray], flat_recons: np.ndarray[np.ndarray]
+                                        ) -> np.ndarray[np.ndarray]:
+        """returns 2D array of abs error between 2D arrays original and recon, for each parameter
+        data shape (data_points, channels)"""
 
         errors = np.zeros(original_data.shape)
         for index in range(original_data.shape[1]):  # for every channel
@@ -135,5 +138,3 @@ class LossThresholdCalculator:
             errors[:, index] = np.abs(org_column - recon_column)
 
         return errors
-
-
