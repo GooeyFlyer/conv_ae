@@ -6,7 +6,6 @@ import pandas as pd
 import numpy.testing as npt
 
 import src.get_data
-import src.parameter_filtering
 import src.LossThresholdCalculator
 
 
